@@ -7,13 +7,10 @@ from datetime import datetime, timedelta
 import json
 import os.path
 import pandas as pd
-import sys
-
-sys.path = ['./', '../'] + sys.path
 
 # Local
 from GenConfigs import *
-from Logger import ScriptLogger
+from .Logger import ScriptLogger
 
 logger = ScriptLogger(loggername='workload_analyzer/perf_mon_analyzer',
                       filename=FAAS_ROOT+'/logs/WA.log')

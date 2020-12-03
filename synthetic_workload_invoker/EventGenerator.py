@@ -3,15 +3,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import datetime
-import logging
 import numpy as np
 import random
 
 from commons.Logger import ScriptLogger
 
 logger_eg = ScriptLogger('event_generator', 'SWI.log')
-
 
 def CreateEvents(instance, dist, rate, duration, seed=None):
     """

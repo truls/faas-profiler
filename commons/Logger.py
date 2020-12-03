@@ -4,10 +4,8 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import sys
 
 
-sys.path = ['./', '../'] + sys.path
 from GenConfigs import *
 
 
@@ -23,7 +21,7 @@ def ScriptLogger(loggername, logfile):
     lfh.setLevel(logging.DEBUG)
     # create console handler with a higher log level
     lch = logging.StreamHandler()
-    lch.setLevel(logging.ERROR)
+    lch.setLevel(logging.DEBUG)
     # create formatter and add it to the handlers
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -1,1 +1,19 @@
-./comparative-analyzer/ComparativeAnalyzer.py
+#!/usr/bin/env python3
+
+from optparse import OptionParser
+from comparative_analyzer import ComparativeAnalyzer
+
+def main():
+    parser = OptionParser()
+    parser.add_option('-s', '--since', dest='since',
+                      help='compare archives since time', action='store_true')
+    parser.add_option('-p', '--plot', dest='plot',
+                      help='plots default comparative test results', action='store_true')
+    parser.add_option('-c', '--customized_plot', dest='customized_plot',
+                      help='specify a customized plotting string', metavar='FILE')
+    (options, _) = parser.parse_args()
+
+    ComparativeAnalyzer.main(options)
+
+if __name__ == "__main__":
+    main()

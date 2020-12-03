@@ -1,1 +1,17 @@
-./synthetic-workload-invoker/WorkloadInvoker.py
+#!/usr/bin/env python3
+
+from optparse import OptionParser
+
+from synthetic_workload_invoker.WorkloadInvoker import WorkloadInvoker
+
+def main():
+    parser = OptionParser()
+    parser.add_option("-c", "--config_json", dest="config_json",
+                      help="The input json config file describing the synthetic workload.", metavar="FILE")
+    (options, _) = parser.parse_args()
+
+    invoker = WorkloadInvoker()
+    invoker.main(options)
+
+if __name__ == "__main__":
+    main()

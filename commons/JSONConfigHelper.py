@@ -5,10 +5,8 @@
 
 import json
 import os
-import sys
 
 # Local imports
-sys.path = ['./', '../'] + sys.path
 from GenConfigs import *
 
 

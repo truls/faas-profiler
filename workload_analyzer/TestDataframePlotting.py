@@ -9,8 +9,6 @@ import pandas as pd
 import seaborn as sns
 import sys
 
-sys.path = ['./', '../'] + sys.path
-
 # Local
 from GenConfigs import *
 

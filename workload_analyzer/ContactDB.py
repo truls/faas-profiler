@@ -5,16 +5,13 @@
 
 import json
 import os
-from wskutil import request
-import sys
-
-sys.path.insert(0, '../')
+from .wskutil import request
 
 # Local
 from GenConfigs import *
 
 DB_CONFIG_FILE = os.path.expanduser(
-    WSK_PATH[:-3]+'/../ansible/db_local.ini')
+    os.path.join(OPENWHISK_PATH, 'ansible', 'db_local.ini'))
 
 # Examples:
 # print(GetDBConfigs())

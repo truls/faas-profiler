@@ -1,5 +1,3 @@
-#!/usr/bin/env python3.6
-
 # Copyright (c) 2019 Princeton University
 #
 # This source code is licensed under the MIT license found in the
@@ -8,21 +6,17 @@
 # Standard
 from datetime import datetime
 import json
-from optparse import OptionParser
 import os
 from os.path import isfile, join
 import pandas as pd
 import pickle
-import sys
-
-sys.path = ['./', '../'] + sys.path
 
 # Local
 from GenConfigs import *
-from ContactDB import GetActivationRecordsSince
-from Logger import ScriptLogger
-from PerfMonAnalyzer import *
-from TestDataframePlotting import *
+from .ContactDB import GetActivationRecordsSince
+from .Logger import ScriptLogger
+from .PerfMonAnalyzer import *
+from .TestDataframePlotting import *
 
 logger = ScriptLogger(loggername='workload_analyzer',
                       filename=FAAS_ROOT+'/logs/WA.log')
@@ -33,7 +27,7 @@ def GetTestMetadata():
     Returns the test start time from the output log of SWI.
     """
     test_start_time = None
-    with open(FAAS_ROOT+"/synthetic-workload-invoker/test_metadata.out") as f:
+    with open(FAAS_ROOT+"/synthetic_workload_invoker/test_metadata.out") as f:
         lines = f.readlines()
         test_start_time = lines[0]
         config_file = lines[1]
@@ -237,26 +231,10 @@ def CapacityFactor(test_df):
     return capacity_factors
 
 
-def main(argv):
+def main(options):
     """
     The main function.
     """
-    parser = OptionParser()
-    parser.add_option("-v", "--verbose", dest="verbose",
-                      help="prints the detailed test data", action='store_true')
-    parser.add_option("-p", "--plot", dest="plot",
-                      help="plots the test results", action='store_true')
-    parser.add_option("-s", "--save_plot", dest="save_plot",
-                      help="save test result plots", action='store_true')
-    parser.add_option("-a", "--archive", dest="archive",
-                      help="archive the test results in an pickle file", action='store_true')
-    parser.add_option("-c", "--capacity_factor", dest="capacity_factor",
-                      help="returns the capacity factor", action='store_true')
-    parser.add_option('-o', '--override_testname', dest='override_testname',
-                      help='override the JSON test name', metavar='FILE')
-    parser.add_option("-r", "--read_results", dest="read_results",
-                      help="gather also the results of function invocations", action='store_true')
-    (options, args) = parser.parse_args()
 
     logger.info("Workload Analyzer started")
     print("Log file -> logs/WA.log")
@@ -356,6 +334,3 @@ def main(argv):
 
     return True
 
-
-if __name__ == "__main__":
-    main(sys.argv)

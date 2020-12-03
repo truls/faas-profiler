@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.6
 
 # Copyright (c) 2019 Princeton University
 #
@@ -6,8 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from datetime import datetime
-import imp
-from optparse import OptionParser
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset, zoomed_inset_axes, InsetPosition
 import os
@@ -15,9 +12,6 @@ import pandas as pd
 import pickle
 import seaborn as sns
 import sys
-import time
-
-sys.path = ['./', '../'] + sys.path
 
 # Local
 from GenConfigs import *
@@ -184,19 +178,10 @@ def RelativeDegradation(combined_stat_df):
     plt.close()
 
 
-def main(argv):
+def main(options):
     """
     The main function.
     """
-    parser = OptionParser()
-    parser.add_option('-s', '--since', dest='since',
-                      help='compare archives since time', action='store_true')
-    parser.add_option('-p', '--plot', dest='plot',
-                      help='plots default comparative test results', action='store_true')
-    parser.add_option('-c', '--customized_plot', dest='customized_plot',
-                      help='specify a customized plotting string', metavar='FILE')
-    (options, args) = parser.parse_args()
-
     logger.info("Comparative Analyzer started")
     print("Log file -> logs/CA.log")
 

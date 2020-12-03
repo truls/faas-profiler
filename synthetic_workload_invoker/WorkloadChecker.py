@@ -6,12 +6,9 @@
 import datetime
 import logging
 import os
-import sys
 
 # Local imports
-sys.path = ['./', '../'] + sys.path
 from GenConfigs import *
-sys.path = [FAAS_ROOT + '/synthetic-workload-invoker'] + sys.path
 from commons.Logger import ScriptLogger
 
 logger_wlch = ScriptLogger('workload_checker', 'SWI.log')
