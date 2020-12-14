@@ -10,7 +10,7 @@ import os
 from requests_futures.sessions import FuturesSession
 import concurrent.futures
 import subprocess
-#import sys
+import math
 import time
 import threading
 import logging
@@ -63,7 +63,7 @@ class WorkloadInvoker:
                else:
                    prefix = "Request failed:     "
                    failures = True
-               self.logger.info(prefix + str(res.status_code) + " " + res.url)
+               #self.logger.info(prefix + str(res.status_code) + " " + res.url)
 
        return not failures
 
@@ -86,11 +86,12 @@ class WorkloadInvoker:
 
    #     return True
 
+   #class InstanceGenerator(
 
    def HTTPInstanceGenerator(self, action, instance_times, blocking_cli, param_file=None):
        if len(instance_times) == 0:
            return False
-       session = FuturesSession(max_workers=15)
+       session = FuturesSession(max_workers=30)
        url = self.base_url + action
        parameters = {'blocking': blocking_cli, 'result': self.RESULT}
        authentication = (self.user_pass[0], self.user_pass[1])
@@ -129,7 +130,7 @@ class WorkloadInvoker:
                futures.append(future)
                after_time = time.time()
 
-       self.handleFutures(futures)
+       # self.handleFutures(futures)
        return True
 
 
@@ -138,7 +139,7 @@ class WorkloadInvoker:
        TODO: Automate content type
        """
        url = self.base_gust_url + action
-       session = FuturesSession(max_workers=15)
+       session = FuturesSession(max_workers=30)
        if len(instance_times) == 0:
            return False
        after_time, before_time = 0, 0
@@ -166,13 +167,12 @@ class WorkloadInvoker:
        self.handleFutures(futures)
        return True
 
-
    def main(self, options):
        """
        The main function.
        """
        self.logger.info("Workload Invoker started")
-       print("Log file -> logs/SWI.log")
+       print("Log file -> ../profiler_results/logs/SWI.log")
 
        if not CheckJSONConfig(options.config_json):
            self.logger.error("Invalid or no JSON config file!")
@@ -187,14 +187,9 @@ class WorkloadInvoker:
        threads = []
 
        for (instance, instance_times) in all_events.items():
-           # Previous method to run processes
-           # instance_script = 'bash ' + FAAS_ROOT + '/invocation-scripts/' + \
-           #     workload['instances'][instance]['application']+'.sh'
-           # threads.append(threading.Thread(target=PROCESSInstanceGenerator, args=[instance, instance_script, instance_times, workload['blocking_cli']]))
-           # New method
            action = workload['instances'][instance]['application']
            try:
-               param_file = FAAS_ROOT + '/' + workload['instances'][instance]['param_file']
+               param_file = os.path.join(FAAS_ROOT,  workload['instances'][instance]['param_file'])
            except:
                param_file = None
            blocking_cli = workload['blocking_cli']
@@ -207,12 +202,14 @@ class WorkloadInvoker:
                               action, instance_times, blocking_cli, param_file]))
 
        # Dump Test Metadata
-       os.system("date +%s%N | cut -b1-13 > " + FAAS_ROOT +
-                 "/synthetic-workload-invoker/test_metadata.out")
-       os.system("echo " + options.config_json + " >> " + FAAS_ROOT +
-                 "/synthetic-workload-invoker/test_metadata.out")
-       os.system("echo " + str(event_count) + " >> " + FAAS_ROOT +
-                 "/synthetic-workload-invoker/test_metadata.out")
+       test_metadata = {
+          'start_time':  math.ceil(time.time() * 1000),
+          'test_config': options.config_json,
+          'event_count': event_count
+       }
+
+       with open(os.path.join(DATA_DIR, "test_metadata.out"), 'w') as f:
+          f.write(json.dumps(test_metadata))
 
        try:
            if workload['perf_monitoring']['runtime_script']:
@@ -226,6 +223,10 @@ class WorkloadInvoker:
        self.logger.info("Test started")
        for thread in threads:
            thread.start()
+
+       for thread in threads:
+          thread.join()
+
        self.logger.info("Test ended")
 
        return True

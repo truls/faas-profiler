@@ -6,10 +6,13 @@
 # Standard
 from datetime import datetime
 import json
+from json.decoder import JSONDecodeError
 import os
 from os.path import isfile, join
 import pandas as pd
 import pickle
+from typing import Dict, List, Any
+
 
 # Local
 from GenConfigs import *
@@ -22,7 +25,7 @@ logger = ScriptLogger(loggername='workload_analyzer',
                       filename=FAAS_ROOT+'/logs/WA.log')
 
 
-def GetTestMetadata():
+def get_test_metadata():
     """
     Returns the test start time from the output log of SWI.
     """
@@ -35,12 +38,12 @@ def GetTestMetadata():
         print('Invocations by Workload Invoker :' + str(invoked_actions))
     try:
         return int(test_start_time[:-1]), config_file[:-1]
-    except:
+    except Exception as e:
         logger.error("Error reading the test metadata!")
-        return None, None
+        raise e
 
 
-def ExtractExtraAnnotations(json_annotations_data):
+def extract_extra_annotations(json_annotations_data):
     """
     Extracts deep information from activation json record.
     """
@@ -57,7 +60,7 @@ def ExtractExtraAnnotations(json_annotations_data):
     return extra_data
 
 
-def ConstructConfigDataframe(config_file):
+def construct_config_dataframe(config_file):
     """
     Returns a dataframe which describes the test in a standard format.
     """
@@ -66,27 +69,30 @@ def ConstructConfigDataframe(config_file):
         with open(config_file) as f:
             workload = json.load(f)
             logger.info("Successfully read the specified workload")
-    except:
+    except JSONDecodeError as e:
         logger.error("The JSON config file cannot be read")
-        return False
+        logger.error(e.msg)
+        raise e
 
     return [workload['test_name'], pd.DataFrame(workload['instances']).transpose()]
 
 
-def ConstructTestDataframe(since, limit=1000, read_results=False):
+def construct_test_dataframe(since, limit=1000, read_results=False):
     """
     Constructs a dataframe for the performance information of all invocations.
     """
-    perf_data = {'func_name': [], 'activationId': [], 'start': [], 'end': [
-    ], 'duration': [], 'waitTime': [], 'initTime': [], 'latency': [], 'lang': []}
+    perf_data: Dict[str, List[Any]] = {'func_name': [],
+                                       'activationId': [], 'start': [], 'end': [ ], 'duration': [],
+                                       'waitTime': [], 'initTime': [], 'latency': [], 'lang': []}
     if read_results:
         perf_data['results'] = []
 
     activations = GetActivationRecordsSince(since=since, limit=limit)
     if 'error' in activations.keys():
-        print('Encountered an error getting data from the DB! Check the logs for more info.')
         logger.error('DB error: ' + activations['reason'])
-        return None
+        raise Exception('Encountered an error getting data from the DB!'
+                        'Check the logs for more info.')
+
     activations = activations['docs']
 
     for activation in activations:
@@ -97,7 +103,7 @@ def ConstructTestDataframe(since, limit=1000, read_results=False):
         perf_data['start'].append(activation['start'])
         perf_data['end'].append(activation['end'])
         perf_data['duration'].append(activation['duration'])
-        extra_data = ExtractExtraAnnotations(
+        extra_data = extract_extra_annotations(
             activation['annotations'])
         perf_data['waitTime'].append(extra_data['waitTime'])
         perf_data['initTime'].append(extra_data['initTime'])
@@ -111,7 +117,8 @@ def ConstructTestDataframe(since, limit=1000, read_results=False):
     return pd.DataFrame(perf_data)
 
 
-def CreateStatisticalSummary(test_df, config_df, test_start_time):
+
+def create_statistical_summary(test_df, config_df, test_start_time):
     """
     This function returns a dataframe including the statistical
     summary of functions invoked in this test.
@@ -128,7 +135,7 @@ def CreateStatisticalSummary(test_df, config_df, test_start_time):
                               == function]['activity_window'].tolist()
             rate, start = rate[0], test_start_time + 1000.0*start[0][0]
         except:
-            rate, start = None, float('inf')
+            rate, start = float('NaN'), float('inf')
         summary['rate'].append(rate)
         partial_df = test_df[test_df['func_name'] == function]
         start_time = min(partial_df['start'].min(), start)
@@ -141,12 +148,12 @@ def CreateStatisticalSummary(test_df, config_df, test_start_time):
         try:
             summary['rel_stress'].append(1.0*rate/throughput)
         except:
-            summary['rel_stress'].append(None)
+            summary['rel_stress'].append(float('NaN'))
 
     return pd.DataFrame(summary)
 
 
-def NormalizeMemoryValue(mem_string):
+def normalize_memory_value(mem_string):
     """
     Returns memory value in Gigabyte
     """
@@ -158,12 +165,13 @@ def NormalizeMemoryValue(mem_string):
         return float(mem_string[:-1])/(1024*1024.0)
 
 
-def GetSystemdCgtopDetails(file_path):
+def get_systemd_cgtop_details(file_path):
     """
     Returns details from a systemd-cgtop record.
     """
     container_count = 0
     docker_tasks = 0
+    memory = ''
     with open(file_path, 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -176,13 +184,13 @@ def GetSystemdCgtopDetails(file_path):
                 except:
                     pass
             elif 'docker.service' in line:
-                memory = NormalizeMemoryValue(reduced[3])
+                memory = normalize_memory_value(reduced[3])
 
     return {'container_count': container_count,
             'docker_tasks': docker_tasks, 'memory': memory}
 
 
-def GetControlGroupsRecords(since=None):
+def get_control_groups_records(since=None):
     """
     Reads the systemd-cgtop records.
     """
@@ -191,7 +199,7 @@ def GetControlGroupsRecords(since=None):
     if since == None:
         logger.error("No since parameter entered!")
         return None
-    log_path = FAAS_ROOT+'/logs'
+    log_path = FAAS_ROOT + '/logs'
     scg_files = [f for f in os.listdir(log_path) if (
         isfile(join(log_path, f))) and ('systemd-cgtop' in f)]
 
@@ -207,7 +215,7 @@ def GetControlGroupsRecords(since=None):
     for scg_file in scg_files:
         time_stamp = scg_file[scg_file.index('_')+1:scg_file.index('.')]
         cgroups_rec['timestamp'].append(time_stamp)
-        rec_details = GetSystemdCgtopDetails(log_path+'/'+scg_file)
+        rec_details = get_systemd_cgtop_details(log_path+'/'+scg_file)
         cgroups_rec['container_count'].append(rec_details['container_count'])
         cgroups_rec['docker_tasks'].append(rec_details['docker_tasks'])
         cgroups_rec['memory'].append(rec_details['memory'])
@@ -215,7 +223,7 @@ def GetControlGroupsRecords(since=None):
     return pd.DataFrame(cgroups_rec)
 
 
-def CapacityFactor(test_df):
+def capacity_factor(test_df):
     """
     Returns the capacity factor for a workload, meaning how much
     it is stressing the system based on invocation latencies.
@@ -239,26 +247,31 @@ def main(options):
     logger.info("Workload Analyzer started")
     print("Log file -> logs/WA.log")
 
-    test_start_time, config_file = GetTestMetadata()
+    test_start_time, config_file = get_test_metadata()
     if FAAS_ROOT in config_file:
-        [test_name, config_df] = ConstructConfigDataframe(config_file)
+        [test_name, config_df] = construct_config_dataframe(config_file)
     else:
-        [test_name, config_df] = ConstructConfigDataframe(
+        [test_name, config_df] = construct_config_dataframe(
             FAAS_ROOT + '/' + config_file)
-    
+
     read_results = True if options.read_results else False
-    test_df = ConstructTestDataframe(since=test_start_time, limit=100000, 
+    test_df = construct_test_dataframe(since=test_start_time, limit=100000,
                                      read_results=read_results)
     if (test_df is None):
         logger.error('Test result dataframe could not be constructed!')
         return False
+
+
     print('Records read from CouchDB: ' + str(len(test_df['start'])))
     print('Test Dataframe:')
     print(test_df)
 
+    if options.save_csv:
+        test_df.to_csv("output.csv", sep='\t', encoding='utf-8')
+
     invocation_periods = []
     start_times = []
-    for index, row in test_df.iterrows():
+    for _, row in test_df.iterrows():
         start_time = row['start']
         start_times.append(start_time)
     sorted_starts = sorted(start_times)
@@ -272,7 +285,7 @@ def main(options):
     except:
         print('No invocations found!')
 
-    stat_df = CreateStatisticalSummary(test_df, config_df, test_start_time)
+    stat_df = create_statistical_summary(test_df, config_df, test_start_time)
     print(stat_df)
 
     if options.override_testname:
@@ -282,8 +295,10 @@ def main(options):
     ref = test_df['start'].min()
     test_df['start'] -= ref
     test_df['end'] -= ref
-    cgroups_df = GetControlGroupsRecords(since=test_start_time)
+    cgroups_df = get_control_groups_records(since=test_start_time)
     perf_mon_records = AnalyzePerfMonRecords(config_file)
+
+    print ('Duration: ', test_df['duration'], '\n\nInitTime: ', test_df['initTime'])
     test_df['execution'] = test_df['duration'] - test_df['initTime']
 
     if options.verbose:
@@ -309,9 +324,10 @@ def main(options):
         pickle.dump([test_name, config_df, stat_df, test_df,
                      perf_mon_records], open(file_name, "wb"))
     if options.capacity_factor:
-        with open(FAAS_ROOT + '/workload-analyzer/capacity_factors.json', 'w') as outfile:
-            json.dump(CapacityFactor(test_df), outfile)
+        with open(FAAS_ROOT + '/workload_analyzer/capacity_factors.json', 'w') as outfile:
+            json.dump(capacity_factor(test_df), outfile)
 
+    dim = ''
     print('Performance Summary')
     for dim in ['initTime', 'execution', 'latency']:
         print('Mean ' + dim + ' (ms): ' + str(test_df[dim].mean()))
@@ -333,4 +349,3 @@ def main(options):
         print('***********')
 
     return True
-

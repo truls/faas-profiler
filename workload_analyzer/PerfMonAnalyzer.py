@@ -13,7 +13,7 @@ from GenConfigs import *
 from .Logger import ScriptLogger
 
 logger = ScriptLogger(loggername='workload_analyzer/perf_mon_analyzer',
-                      filename=FAAS_ROOT+'/logs/WA.log')
+                      filename=os.path.join(DATA_DIR, 'logs', 'WA.log'))
 
 
 def ReadPQOSMSRMon(pqos_msr_mon_file):
@@ -128,8 +128,8 @@ def AnalyzePerfMonRecords(config_file):
     records = {}
 
     # Perf Tool
-    perf_mon_file = FAAS_ROOT + '/perf-mon.out'
-    pqos_msr_mon_file = FAAS_ROOT + '/pqos-msr-mon.out'
+    perf_mon_file = os.path.join(DATA_DIR, 'perf-mon.out')
+    pqos_msr_mon_file = os.path.join(DATA_DIR 'pqos-msr-mon.out')
 
     if not os.path.isfile(perf_mon_file):
         logger.error("The perf output file missing!")

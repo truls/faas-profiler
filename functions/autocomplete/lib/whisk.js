@@ -30,7 +30,7 @@ const createAction = function(name, path) {
 
   // create OpenWhisk action
   // I5: apply workaround for server-side issue
-  var createParams = ['action', 'update', 'autocomplete/'+name, '--kind', 'nodejs:6', path, '-a', 'web-export', 'true', '-i'];
+  var createParams = ['action', 'update', 'autocomplete/'+name, '--kind', 'nodejs:10', path, '-a', 'web-export', 'true', '-i'];
   var actionCreate = spawn( 'wsk', createParams);
 
   if(actionCreate.status) {

@@ -18,7 +18,9 @@ def main():
     parser.add_option('-o', '--override_testname', dest='override_testname',
                       help='override the JSON test name', metavar='FILE')
     parser.add_option("-r", "--read_results", dest="read_results",
-                      help="gather also the results of function invocations", action='store_true')
+                     help="gather also the results of function invocations", action='store_true')
+    parser.add_option("-f", "--save-csv", dest="save_csv", action='store_true',
+                      help="Save results as a CSV file")
     (options, _) = parser.parse_args()
 
     WorkloadAnalyzer.main(options)

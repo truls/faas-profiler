@@ -1,3 +1,4 @@
+FAAS_ROOT="/lhome/trulsas/faas-profiler"
 if [[ $1 -eq '' ]]; then
     echo "The length of the test should be provided as the first input argument."
     exit 1
