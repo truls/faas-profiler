@@ -1,3 +1,7 @@
+#!/bin/bash
+
+set -euo pipefail
+
 # This script uses the Linux "perf" tool to gather certain information.
 
 # Notes:
