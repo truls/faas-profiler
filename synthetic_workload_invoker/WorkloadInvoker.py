@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 # Standard imports
+from os import getpid
 from commons.util import ensure_directory_exists
 from genericpath import exists
 import json
@@ -264,11 +265,12 @@ class WorkloadInvoker:
                runtime_script = ['bash',
                                  os.path.join(FAAS_ROOT,
                                               workload['perf_monitoring']['runtime_script']),
-                                 str(int(workload['test_duration_in_seconds'])),
+                                 int(workload['test_duration_in_seconds']),
                                  self.test_result_dir_path,
+                                 os.getpid(),
                                  '&']
                # FIXME: os.system
-               os.system(' '.join(runtime_script))
+               os.system(' '.join(map(str, runtime_script)))
                self.logger.info("Runtime monitoring script ran")
        except:
            pass
