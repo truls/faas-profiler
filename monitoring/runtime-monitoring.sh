@@ -22,5 +22,8 @@ PQOS_SAMPLING_INTERVAL=1    # set sampling interval to Nx100ms
 # Run monitoring scripts
 # << Uncomment any or all of the default scripts below to use them. >>
 "$DIR/perf.sh" "$TEST_DURATION" "$PERF_SAMPLING_INTERVAL" "$TEST_OUTDIR" &
+script1=$!
 # bash $FAAS_ROOT'/monitoring/PQOSMon.sh' $TEST_DURATION $PQOS_SAMPLING_INTERVAL &
 # bash $FAAS_ROOT'/monitoring/Blktrace.sh' $TEST_DURATION &
+
+wait $script1

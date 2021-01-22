@@ -4,8 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 # Standard imports
-from commons.util import ensure_directory_exists
-from genericpath import exists
 import json
 
 import os
@@ -16,6 +14,7 @@ import math
 import time
 import threading
 import logging
+import asyncio
 
 # Local imports
 from GenConfigs import *
@@ -197,7 +196,7 @@ class WorkloadInvoker:
        self.handleFutures(futures)
        return True
 
-   def main(self, options):
+   async def invoke_benchmark(self, options):
        """
        The main function.
        """
@@ -255,27 +254,34 @@ class WorkloadInvoker:
           'runid': self.runid
        }
 
+       runtime_script = None
+
        with open(os.path.join(self.test_result_dir_path,
                               "test_metadata.json"), 'w') as f:
           f.write(json.dumps(test_metadata))
 
-       try:
-           if workload['perf_monitoring']['runtime_script']:
-               runtime_script = ['bash',
-                                 os.path.join(FAAS_ROOT,
-                                              workload['perf_monitoring']['runtime_script']),
-                                 str(int(workload['test_duration_in_seconds'])),
-                                 self.test_result_dir_path,
-                                 '&']
-               # FIXME: os.system
-               os.system(' '.join(runtime_script))
-               self.logger.info("Runtime monitoring script ran")
-       except:
-           pass
+          if workload['perf_monitoring']['runtime_script']:
+             runtime_script_cmdline = [ os.path.join(FAAS_ROOT,
+                                                     workload['perf_monitoring']['runtime_script']),
+                               str(int(workload['test_duration_in_seconds'])),
+                               self.test_result_dir_path]
+             # FIXME: os.system
+             runtime_script = await asyncio.create_subprocess_exec(*runtime_script_cmdline)
+             self.logger.info("Invoked runtime monitoring script pid=%s" %
+                              runtime_script.pid)
+
 
        self.logger.info("Test started")
        for thread in threads:
            thread.start()
+
+       if runtime_script:
+          _, _ = await runtime_script.communicate()
+
+          if runtime_script.returncode > 0:
+             raise Exception("Runtime script failed")
+          else:
+             self.logger.info("Runtime script completed successfully")
 
        for thread in threads:
           thread.join()
@@ -283,3 +289,6 @@ class WorkloadInvoker:
        self.logger.info("Test ended")
 
        return True
+
+   def main(self, options):
+       asyncio.run(self.invoke_benchmark(options))
