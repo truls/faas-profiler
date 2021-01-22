@@ -129,7 +129,7 @@ def AnalyzePerfMonRecords(config_file):
 
     # Perf Tool
     perf_mon_file = os.path.join(DATA_DIR, 'perf-mon.out')
-    pqos_msr_mon_file = os.path.join(DATA_DIR 'pqos-msr-mon.out')
+    pqos_msr_mon_file = os.path.join(DATA_DIR, 'pqos-msr-mon.out')
 
     if not os.path.isfile(perf_mon_file):
         logger.error("The perf output file missing!")

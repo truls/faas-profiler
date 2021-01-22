@@ -8,7 +8,6 @@ import random
 
 from commons.Logger import ScriptLogger
 
-logger_eg = ScriptLogger('event_generator', 'SWI.log')
 
 def CreateEvents(instance, dist, rate, duration, seed=None):
     """
@@ -54,6 +53,9 @@ def GenericEventGenerator(workload):
     """
     This function returns a list of times and applications calls given a workload description.
     """
+
+    logger_eg = ScriptLogger('event_generator', "SWI.log")
+
     logger_eg.info("Started Generic Event Generator")
     test_duration_in_seconds = workload['test_duration_in_seconds']
 

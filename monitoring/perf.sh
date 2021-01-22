@@ -4,8 +4,14 @@ set -euo pipefail
 
 # This script uses the Linux "perf" tool to gather certain information.
 
+test_duration="$1"
+perf_sampling_interval="$2"
+test_outdir="$3"
+
 # Notes:
 # 1. The events listed below are just some of the examples. You can find the full list of events by running `perf list`.
 # 2. It is usually recommended to go for fewer events to ensure low profiling overhead.
 
-sudo perf stat -a -e cpu-cycles,L1-dcache-loads,L1-dcache-load-misses,L1-icache-load-misses,dTLB-load-misses,dTLB-loads,iTLB-load-misses,iTLB-loads,branch-misses,context-switches,cpu-migrations,page-faults -I $2 -o perf-mon.out sleep $1
+echo "Running perf for $test_duration seconds"
+
+sudo perf stat -a -e cpu-cycles,L1-dcache-loads,L1-dcache-load-misses,L1-icache-load-misses,LLC-load-misses,dTLB-load-misses,dTLB-loads,iTLB-load-misses,iTLB-loads,branch-misses,context-switches,cpu-migrations,page-faults,instructions -I "$perf_sampling_interval" -o "$test_outdir/perf-mon.out" -x ',' sleep "$test_duration"

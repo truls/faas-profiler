@@ -6,6 +6,7 @@
 import logging
 import os.path
 
+from . import util
 from GenConfigs import *
 
 
@@ -17,7 +18,10 @@ def ScriptLogger(loggername, logfile):
     logger = logging.getLogger(loggername)
     logger.setLevel(logging.DEBUG)
     # create file handler which logs even debug messages
-    lfh = logging.FileHandler(os.path.join(DATA_DIR, 'logs', logfile))
+    lfh = logging.FileHandler(
+        os.path.join(
+            util.ensure_directory_exists(
+                os.path.join(DATA_DIR, 'logs')), logfile))
     lfh.setLevel(logging.DEBUG)
     # create console handler with a higher log level
     lch = logging.StreamHandler()

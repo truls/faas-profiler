@@ -11,13 +11,14 @@ import os
 from GenConfigs import *
 from commons.Logger import ScriptLogger
 
-logger_wlch = ScriptLogger('workload_checker', 'SWI.log')
 
 
-def CheckWorkloadValidity(workload, supported_distributions):
+def check_workload_validity(workload, supported_distributions):
     """
     Checks whether a loaded workload is valid.
     """
+    logger_wlch = ScriptLogger('workload_checker', 'SWI.log')
+
     logger_wlch.info("Started CheckWorkloadValidity")
     # 1 - Check if the workload has been successfully read in ReadJSONConfig
     if workload is None:
