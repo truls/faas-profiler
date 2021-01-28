@@ -15,6 +15,7 @@ import time
 import threading
 import logging
 import asyncio
+from typing import Any, Tuple, Dict
 
 # Local imports
 from GenConfigs import *
@@ -47,13 +48,18 @@ class WorkloadInvoker:
       self.base_url = APIHOST + '/api/v1/namespaces/' + NAMESPACE + '/actions/'
       self.base_gust_url = APIHOST + '/api/v1/web/guest/default/'
 
-      # These variables are set in main
-      self.my_commit_hash, self.test_result_dir_name = None, None
-      self.test_result_dir_path = None
+      # Generate a runid for this instance
       self.runid = util.gen_random_hex_string(8)
 
       self.param_file_cache = {}   # a cache to keep json of param files
-      self.binary_data_cache = {}  # a cache to keep binary data (image files, etc.)
+      self.binary_data_cache = {}  # a cache to keep binary data
+      # (image files, etc.)
+
+      # Count of function invocations successfully submitted to FaaS queue
+      self.invocation_success_tally = 0
+      self.invocation_failure_tally = 0
+      self.invocation_expected_tally = 0
+      self.tally_lock = threading.Lock()
 
    @staticmethod
    def gen_invocation_id(test_name, runid):
@@ -63,24 +69,30 @@ class WorkloadInvoker:
       test_dir_name = "{}_{}_{}".format(commit_hash[0:10], test_name, runid)
       return (commit_hash, test_dir_name)
 
-   def handle_futures(self, futures):
-       failures = False
+   def handle_futures(self, futures) -> Tuple[int, int]:
+       """
+       Wait for all futures in futures to complete. Returnes a tuple
+       containing the number of succseful and failed requests.
+       """
+       failures = 0
+       successes = 0
        for future in concurrent.futures.as_completed(futures):
            try:
                res = future.result()
            except Exception as e:
                self.logger.info("Request failed: " + str(e))
-               failures = True
+               failures += 1
            else:
                prefix = ""
                if res.status_code >= 200 and res.status_code <= 299 :
                    prefix = "Request successful: "
+                   successes += 1
                else:
                    prefix = "Request failed:     "
-                   failures = True
+                   failures += 1
                    self.logger.info(prefix + str(res.status_code) + " " + res.url)
 
-       return not failures
+       return (successes, failures)
 
    # @staticmethod
    # def PROCESSInstanceGenerator(instance, instance_script, instance_times, blocking_cli):
@@ -103,9 +115,10 @@ class WorkloadInvoker:
 
    #class InstanceGenerator(
 
-   def http_instance_generator(self, action, instance_times, blocking_cli, param_file=None):
+   def http_instance_generator(self, action, instance_times,
+                               blocking_cli, param_file=None) -> None:
        if len(instance_times) == 0:
-           return False
+          raise Exception("http_instance_generator called without instance times")
        session = FuturesSession(max_workers=100)
        url = self.base_url + action
        assert(self.runid)
@@ -142,14 +155,19 @@ class WorkloadInvoker:
           #print(future.result())
           after_time = time.time()
 
-       self.handle_futures(futures)
-       return True
+       (successes, failures) = self.handle_futures(futures)
+
+       with self.tally_lock:
+          self.invocation_success_tally += successes
+          self.invocation_failure_tally += failures
+          self.invocation_expected_tally += len(instance_times)
 
 
    def BinaryDataHTTPInstanceGenerator(self, action, instance_times, blocking_cli, data_file):
        """
        TODO: Automate content type
        """
+       raise Exception("BinaryDataHTTPInstanceGenerator is currently broken")
        url = self.base_gust_url + action
        session = FuturesSession(max_workers=100)
        if len(instance_times) == 0:
@@ -184,7 +202,13 @@ class WorkloadInvoker:
        self.handle_futures(futures)
        return True
 
-   async def invoke_benchmark_async(self, options) -> str:
+   def write_test_metadata(self, metadata, destdir):
+      destfile = os.path.join(destdir, "test_metadata.json")
+      with open(destfile, 'w') as f:
+         f.write(json.dumps(metadata))
+
+
+   async def invoke_benchmark_async(self, options) -> Dict[str, Any]:
        """
        The main function.
        """
@@ -202,10 +226,10 @@ class WorkloadInvoker:
 
        # Set name and commit hash and create destination dir if
        # missing
-       self.my_commit_hash, self.test_result_dir_name =\
+       my_commit_hash, test_result_dir_name =\
           WorkloadInvoker.gen_invocation_id(workload["test_name"], self.runid)
-       self.test_result_dir_path = util.ensure_directory_exists(
-          os.path.join(DATA_DIR, self.test_result_dir_name))
+       test_result_dir_path = util.ensure_directory_exists(
+          os.path.join(DATA_DIR, test_result_dir_name))
 
        # log_path = os.path.join(
        #                               util.ensure_directory_exists(
@@ -239,25 +263,20 @@ class WorkloadInvoker:
           'start_time':  math.ceil(time.time() * 1000),
           'test_config': options.config_json,
           'event_count': event_count,
-          'commit_hash': self.my_commit_hash,
+          'commit_hash': my_commit_hash,
           'runid': self.runid
        }
 
        runtime_script = None
 
-       with open(os.path.join(self.test_result_dir_path,
-                              "test_metadata.json"), 'w') as f:
-          f.write(json.dumps(test_metadata))
-
-          if workload['perf_monitoring']['runtime_script']:
-             runtime_script_cmdline = [ os.path.join(FAAS_ROOT,
-                                                     workload['perf_monitoring']['runtime_script']),
-                               str(int(workload['test_duration_in_seconds'])),
-                               self.test_result_dir_path]
-             # FIXME: os.system
-             runtime_script = await asyncio.create_subprocess_exec(*runtime_script_cmdline)
-             self.logger.info("Invoked runtime monitoring script pid=%s" %
-                              runtime_script.pid)
+       if workload['perf_monitoring']['runtime_script']:
+          runtime_script_cmdline = [ os.path.join(FAAS_ROOT,
+                                                  workload['perf_monitoring']['runtime_script']),
+                                     str(int(workload['test_duration_in_seconds'])),
+                                     test_result_dir_path]
+          runtime_script = await asyncio.create_subprocess_exec(*runtime_script_cmdline)
+          self.logger.info("Invoked runtime monitoring script pid=%s" %
+                           runtime_script.pid)
 
 
        self.logger.info("Test started")
@@ -275,11 +294,18 @@ class WorkloadInvoker:
        for thread in threads:
           thread.join()
 
+       # Save post-benchmark stats to metadata
+       test_metadata["failures"] = self.invocation_failure_tally
+       test_metadata["successes"] = self.invocation_success_tally
+       test_metadata["expected"] = self.invocation_expected_tally
+
+       self.write_test_metadata(test_metadata, test_result_dir_path)
+
        self.logger.info("Test ended")
 
-       return self.runid
+       return test_metadata
 
-   def invoke_benchmark(self, options) -> str:
+   def invoke_benchmark(self, options):
       return asyncio.run(self.invoke_benchmark_async(options))
 
    def main(self, options):
