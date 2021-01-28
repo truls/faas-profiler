@@ -108,50 +108,39 @@ class WorkloadInvoker:
            return False
        session = FuturesSession(max_workers=100)
        url = self.base_url + action
-       print("runid is", str(self.runid))
        assert(self.runid)
        parameters = {'blocking': blocking_cli, 'result': self.RESULT}
        args = { 'testid': self.runid,
-                'body': None}
+                'body': None }
        print("Setting params", parameters)
        authentication = (self.user_pass[0], self.user_pass[1])
-       after_time, before_time = 0, 0
 
        futures = []
 
-       if param_file == None:
-           st = 0
-           for t in instance_times:
-               st = st + t - (after_time - before_time)
-               before_time = time.time()
-               if st > 0:
-                   time.sleep(st)
+       if param_file:
+          try:
+             param_file_body = self.param_file_cache[param_file]
+          except:
+             with open(param_file, 'r') as f:
+                param_file_body = json.load(f)
+                args['body'] = param_file_body
+                param_file_body = args
+                self.param_file_cache[param_file] = param_file_body
 
-               #logger.info("Url " + url)
-               future = session.post(url, params=parameters, auth=authentication,
-                                     json=args, verify=False)
-               futures.append(future)
-               #print(future.result())
-               after_time = time.time()
-       else:   # if a parameter file is provided
-           try:
-               param_file_body = self.param_file_cache[param_file]
-           except:
-               with open(param_file, 'r') as f:
-                   param_file_body = json.load(f)
-                   args['body'] = param_file_body
-                   param_file_body = args
-                   self.param_file_cache[param_file] = param_file_body
+       st = 0
+       after_time, before_time = 0, 0
+       for t in instance_times:
+          st = st + t - (after_time - before_time)
+          before_time = time.time()
+          if st > 0:
+             time.sleep(st)
 
-           for t in instance_times:
-               st = t - (after_time - before_time)
-               if st > 0:
-                   time.sleep(st)
-               before_time = time.time()
-               future = session.post(url, params=parameters, auth=authentication,
-                                     json=param_file_body, verify=False)
-               futures.append(future)
-               after_time = time.time()
+          #logger.info("Url " + url)
+          future = session.post(url, params=parameters, auth=authentication,
+                                json=args, verify=False)
+          futures.append(future)
+          #print(future.result())
+          after_time = time.time()
 
        self.handle_futures(futures)
        return True
