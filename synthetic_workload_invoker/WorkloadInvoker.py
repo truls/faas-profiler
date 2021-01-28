@@ -20,7 +20,7 @@ from typing import Any, Tuple, Dict
 # Local imports
 from GenConfigs import *
 from .EventGenerator import GenericEventGenerator
-from commons.JSONConfigHelper import CheckJSONConfig, ReadJSONConfig
+from commons.JSONConfigHelper import check_json_config, read_json_config
 from commons.Logger import ScriptLogger
 from commons import util
 from .WorkloadChecker import check_workload_validity
@@ -221,17 +221,17 @@ class WorkloadInvoker:
 
 
 
-   async def invoke_benchmark_async(self, options) -> Dict[str, Any]:
+   async def invoke_benchmark_async(self, config_json) -> Dict[str, Any]:
        """
        The main function.
        """
        #self.logger.info("Workload Invoker started")
        #print("Log file -> ../profiler_results/logs/SWI.log")
 
-       if not CheckJSONConfig(options.config_json):
+       if not check_json_config(config_json):
            raise Exception("Invalid or no JSON config file!")
 
-       workload = ReadJSONConfig(options.config_json)
+       workload = read_json_config(config_json)
        if not check_workload_validity(workload=workload,
                                      supported_distributions=self.supported_distributions):
           # Abort the function if json file not valid
@@ -274,7 +274,7 @@ class WorkloadInvoker:
        # Dump Test Metadata
        test_metadata = {
           'start_time':  math.ceil(time.time() * 1000),
-          'test_config': options.config_json,
+          'test_config': config_json,
           'event_count': event_count,
           'commit_hash': my_commit_hash,
           'runid': self.runid
@@ -310,8 +310,8 @@ class WorkloadInvoker:
 
        return test_metadata
 
-   def invoke_benchmark(self, options):
-      return asyncio.run(self.invoke_benchmark_async(options))
+   def invoke_benchmark(self, config_json):
+      return asyncio.run(self.invoke_benchmark_async(config_json))
 
-   def main(self, options):
-      return self.invoke_benchmark(options)
+   def main(self, config_json):
+      return self.invoke_benchmark(config_json)

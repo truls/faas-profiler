@@ -10,7 +10,7 @@ import os
 from GenConfigs import *
 
 
-def CheckJSONConfig(json_file):
+def check_json_config(json_file):
     """
     Checks whether a correct json file is provided.
     """
@@ -21,16 +21,16 @@ def CheckJSONConfig(json_file):
     return True
 
 
-def ReadJSONConfig(json_file):
+def read_json_config(json_file):
     """
-    Reads the JSON config file and returns a list. 
+    Reads the JSON config file and returns a list.
     """
     workload = None
     try:
         with open(json_file) as f:
             workload = json.load(f)
     except:
-        print("The JSON config file cannot be read")
+        raise Exception("The JSON config file cannot be read")
 
     return workload
 

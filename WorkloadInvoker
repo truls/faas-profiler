@@ -11,7 +11,7 @@ def main():
     (options, _) = parser.parse_args()
 
     invoker = WorkloadInvoker()
-    metadata = invoker.main(options)
+    metadata = invoker.main(options.config_json)
     print("Finished benchmark with runid:", metadata["runid"])
     print("Failures/Successes/Expected: %s/%s/%s" %
           (metadata["failures"], metadata["successes"], metadata["expected"]))
