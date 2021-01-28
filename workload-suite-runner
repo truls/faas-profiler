@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+
+import sys
+from optparse import OptionParser
+
+from synthetic_workload_invoker.workload_suite import WorkloadSuite, InvocationType
+
+def main():
+    usage = "usage: %prog [options] arg1 arg2"
+    parser = OptionParser(usage=usage)
+    parser.add_option("-c", "--workload-config", type="string", dest="workload_config",
+                      help="The input yaml config file describing workload suite.", metavar="FILE")
+    parser.add_option("-t", "--type", type="choice",
+                      choices=["warm", "cold"],
+                      dest="invocation_type", help="Do a warm or cold benchmark run")
+    parser.add_option("-r", "--repeat", type="int", dest="repeat_times",
+                      help="How many times to repeat a benchmark")
+    (options, _) = parser.parse_args()
+
+    if not (options.workload_config and options.invocation_type and options.repeat_times):
+        parser.print_help()
+        sys.exit(0)
+
+    suite_runner = WorkloadSuite(options.workload_config,
+                                 InvocationType.from_string(options.invocation_type),
+                                 options.repeat_times)
+    suiteid = suite_runner.run_suite()
+    print("Finished benchmark suite with suiteid:", suiteid)
+
+if __name__ == "__main__":
+    main()
