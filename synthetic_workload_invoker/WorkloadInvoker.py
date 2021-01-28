@@ -208,7 +208,8 @@ class WorkloadInvoker:
        workload = ReadJSONConfig(options.config_json)
        if not check_workload_validity(workload=workload,
                                      supported_distributions=self.supported_distributions):
-           return False    # Abort the function if json file not valid
+          # Abort the function if json file not valid
+          raise Exception("Workload JSON is invalid")
 
        # Set name and commit hash and create destination dir if
        # missing
