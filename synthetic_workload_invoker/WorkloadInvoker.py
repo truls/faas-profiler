@@ -202,7 +202,8 @@ class WorkloadInvoker:
        self.handle_futures(futures)
        return True
 
-   def write_test_metadata(self, metadata, destdir):
+   @staticmethod
+   def write_test_metadata(metadata, destdir):
       destfile = os.path.join(destdir, "test_metadata.json")
       with open(destfile, 'w') as f:
          f.write(json.dumps(metadata))
