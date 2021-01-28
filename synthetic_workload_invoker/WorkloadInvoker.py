@@ -275,6 +275,7 @@ class WorkloadInvoker:
        # Dump Test Metadata
        test_metadata = {
           'start_time':  math.ceil(time.time() * 1000),
+          'workload_name': workload["test_name"],
           'test_config': config_json,
           'event_count': event_count,
           'commit_hash': my_commit_hash,

@@ -9,6 +9,7 @@ will write a metadata file containing the runid's of the benchmarks
 that were run.
 
 """
+import json
 import re
 import os
 import subprocess
@@ -20,6 +21,7 @@ from typing import Dict, List
 
 import docker
 
+from commons import util
 from GenConfigs import *
 
 ENCODING = "utf-8"
@@ -143,7 +145,14 @@ class WorkloadSuite:
         self.invocation_type = invocation_type
         self.repeat_times = repeat_times
 
-
+    @staticmethod
+    def _write_suite_metadata(metadata):
+        destfile = os.path.join(
+            util.ensure_directory_exists(
+                os.path.join(DATA_DIR, "suite_%s" % metadata["suiteid"])),
+            "metadata.json")
+        with open(destfile, 'w') as f:
+            f.write(json.dumps(metadata))
 
     def _run_workload(self, workload):
         invoker = WorkloadInvoker()
@@ -170,6 +179,14 @@ class WorkloadSuite:
         total_successes = sum(successes)
         total_failures = sum(failures)
         total_expected = sum(expected)
+
+        metadata = {'suiteid': suiteid,
+                    'benchmark': self.workload_config,
+                    'total_successes': total_successes,
+                    'total_failures': total_failures,
+                    'total_expected': total_expected}
+
+        self._write_suite_metadata(metadata)
 
         print("Finished running suite with runid %s, successes %s, failures %s, expected %s" %
               (suiteid, total_successes, total_failures, total_expected))
