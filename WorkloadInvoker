@@ -11,7 +11,8 @@ def main():
     (options, _) = parser.parse_args()
 
     invoker = WorkloadInvoker()
-    invoker.main(options)
+    runid = invoker.main(options)
+    print("Finished benchmark with runid:", runid)
 
 if __name__ == "__main__":
     main()

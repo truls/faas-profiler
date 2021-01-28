@@ -195,7 +195,7 @@ class WorkloadInvoker:
        self.handle_futures(futures)
        return True
 
-   async def invoke_benchmark_async(self, options):
+   async def invoke_benchmark_async(self, options) -> str:
        """
        The main function.
        """
@@ -290,6 +290,8 @@ class WorkloadInvoker:
 
        return self.runid
 
-   
+   def invoke_benchmark(self, options) -> str:
+      return asyncio.run(self.invoke_benchmark_async(options))
+
    def main(self, options):
-       asyncio.run(self.invoke_benchmark(options))
+      return self.invoke_benchmark(options)
