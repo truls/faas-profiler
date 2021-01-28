@@ -207,6 +207,19 @@ class WorkloadInvoker:
       with open(destfile, 'w') as f:
          f.write(json.dumps(metadata))
 
+   async def maybe_start_runtime_script(self, workload, destdir):
+      if workload['perf_monitoring']['runtime_script']:
+          runtime_script_cmdline = [ os.path.join(FAAS_ROOT,
+                                                  workload['perf_monitoring']['runtime_script']),
+                                     str(int(workload['test_duration_in_seconds'])),
+                                     destdir]
+          runtime_script = await asyncio.create_subprocess_exec(*runtime_script_cmdline)
+          self.logger.info("Invoked runtime monitoring script pid=%s" %
+                           runtime_script.pid)
+          return runtime_script
+      return None
+
+
 
    async def invoke_benchmark_async(self, options) -> Dict[str, Any]:
        """
@@ -267,16 +280,8 @@ class WorkloadInvoker:
           'runid': self.runid
        }
 
-       runtime_script = None
-
-       if workload['perf_monitoring']['runtime_script']:
-          runtime_script_cmdline = [ os.path.join(FAAS_ROOT,
-                                                  workload['perf_monitoring']['runtime_script']),
-                                     str(int(workload['test_duration_in_seconds'])),
-                                     test_result_dir_path]
-          runtime_script = await asyncio.create_subprocess_exec(*runtime_script_cmdline)
-          self.logger.info("Invoked runtime monitoring script pid=%s" %
-                           runtime_script.pid)
+       runtime_script = await self.maybe_start_runtime_script(workload,
+                                                              test_result_dir_path)
 
 
        self.logger.info("Test started")
