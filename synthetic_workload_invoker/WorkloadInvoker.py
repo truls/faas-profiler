@@ -63,9 +63,8 @@ class WorkloadInvoker:
       test_dir_name = "{}_{}_{}".format(commit_hash[0:10], test_name, runid)
       return (commit_hash, test_dir_name)
 
-   def handleFutures(self, futures):
+   def handle_futures(self, futures):
        failures = False
-       print("In handleFutures", len(futures))
        for future in concurrent.futures.as_completed(futures):
            try:
                res = future.result()
@@ -104,7 +103,7 @@ class WorkloadInvoker:
 
    #class InstanceGenerator(
 
-   def HTTPInstanceGenerator(self, action, instance_times, blocking_cli, param_file=None):
+   def http_instance_generator(self, action, instance_times, blocking_cli, param_file=None):
        if len(instance_times) == 0:
            return False
        session = FuturesSession(max_workers=100)
@@ -154,7 +153,7 @@ class WorkloadInvoker:
                futures.append(future)
                after_time = time.time()
 
-       self.handleFutures(futures)
+       self.handle_futures(futures)
        return True
 
 
@@ -193,10 +192,10 @@ class WorkloadInvoker:
            futures.append(future)
            after_time = time.time()
 
-       self.handleFutures(futures)
+       self.handle_futures(futures)
        return True
 
-   async def invoke_benchmark(self, options):
+   async def invoke_benchmark_async(self, options):
        """
        The main function.
        """
@@ -242,7 +241,7 @@ class WorkloadInvoker:
                threads.append(threading.Thread(target=self.BinaryDataHTTPInstanceGenerator, args=[
                               action, instance_times, blocking_cli, data_file]))
            else:
-               threads.append(threading.Thread(target=self.HTTPInstanceGenerator, args=[
+               threads.append(threading.Thread(target=self.http_instance_generator, args=[
                               action, instance_times, blocking_cli, param_file]))
 
        # Dump Test Metadata
@@ -288,7 +287,8 @@ class WorkloadInvoker:
 
        self.logger.info("Test ended")
 
-       return True
+       return self.runid
 
+   
    def main(self, options):
        asyncio.run(self.invoke_benchmark(options))
