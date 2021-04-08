@@ -13,7 +13,10 @@ function main(params) {
     val.testid = params.__ow_query;
     return val;
   }).catch(err => {
-    throw err;
+    return {
+      statusCode: 500,
+      body: err
+    };
   });
 
   return ret_val;
