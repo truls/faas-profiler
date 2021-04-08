@@ -17,7 +17,7 @@ class Image {
             Jimp.read(this.url, (error, image) => {
                 if(error) {
                     var response = {
-			statusCode: 200,
+                        statusCode: 200,
                         body: "AAAAA"
                     };
                     resolve(response);

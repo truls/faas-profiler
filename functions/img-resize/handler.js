@@ -6,8 +6,17 @@
 const Image = require("./image");
 
 function main(params) {
-    var i = new Image(Buffer.from(params.__ow_body, "base64"));
-    return i.generate();
+  const i = new Image(Buffer.from(params.__ow_body, "base64"));
+  const res = i.generate();
+  const ret_val = res.then(val => {
+    val.result = "ok";
+    val.testid = params.__ow_query;
+    return val;
+  }).catch(err => {
+    throw err;
+  });
+
+  return ret_val;
 }
 
 exports.main = main;

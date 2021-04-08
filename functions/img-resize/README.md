@@ -15,7 +15,7 @@ zip -r action.zip ./*
 Now to create the function:
 
 ```
-wsk action create img-resize --kind nodejs:8 action.zip --web raw -i
+wsk action create img-resize --kind nodejs:10 action.zip --web raw -i
 ```
 
 To get the URL that we want to curl, you'll want to run:
@@ -27,7 +27,7 @@ wsk action get img-resize --url -i
 Make sure you have some PNG file in your directory. Now you can actually invoke the function! Here we invoke curl with -v for verbose.
 
 ```
-curl -X POST -H "Content-Type: image/png" --data-binary @./icon.png https://localhost/api/v1/web/guest/default/img-resize -k -v >output.zip
+curl -X POST -H "Content-Type: image/png" --data-binary @./piton.png https://localhost/api/v1/web/guest/default/img-resize -k -v >output.zip
 ```
 
 Alternatively to run with the libertybell.jpg we provided:
