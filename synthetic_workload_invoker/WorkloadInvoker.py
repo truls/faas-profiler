@@ -16,6 +16,7 @@ import threading
 import logging
 import asyncio
 from typing import Any, Tuple, Dict
+from mimetypes import MimeTypes
 
 # Local imports
 from GenConfigs import *
@@ -163,12 +164,11 @@ class WorkloadInvoker:
           self.invocation_expected_tally += len(instance_times)
 
 
-   def BinaryDataHTTPInstanceGenerator(self, action, instance_times, blocking_cli, data_file):
+   def binary_data_http_instance_generator(self, action, instance_times, blocking_cli, data_file):
        """
        TODO: Automate content type
        """
-       raise Exception("BinaryDataHTTPInstanceGenerator is currently broken")
-       url = self.base_gust_url + action
+       url = f"{self.base_gust_url}{action}?{self.runid}"
        session = FuturesSession(max_workers=100)
        if len(instance_times) == 0:
            return False
@@ -177,10 +177,14 @@ class WorkloadInvoker:
        futures = []
 
        try:
-           data = self.binary_data_cache[data_file]
-       except:
-           data = open(data_file, 'rb').read()
-           self.binary_data_cache[data_file] = data
+          self.binary_data_cache[data_file]
+       except KeyError:
+          data = open(data_file, 'rb').read()
+          self.binary_data_cache[data_file]["body"] = data
+          self.binary_data_cache[data_file]["mime"] = MimeTypes().guess_type(data_file)
+       finally:
+          file_body = self.binary_data_cache[data_file]["body"]
+          file_mime = self.binary_data_cache[data_file]["mime"]
 
        for t in instance_times:
            st = t - (after_time - before_time)
@@ -190,11 +194,11 @@ class WorkloadInvoker:
            self.logger.info("Url " + url)
            assert(self.runid)
            future = session.post(url=url, headers={'Content-Type':
-                                                   'image/jpeg'},
+                                                   file_mime},
                                  params={'blocking': blocking_cli,
                                          'result': self.RESULT,
                                          'payload': {'testid': self.runid}},
-                                 data=data, auth=(self.user_pass[0],
+                                 data=file_body, auth=(self.user_pass[0],
                                                   self.user_pass[1]), verify=False)
            futures.append(future)
            after_time = time.time()
@@ -266,7 +270,7 @@ class WorkloadInvoker:
            blocking_cli = workload['blocking_cli']
            if 'data_file' in workload['instances'][instance].keys():
                data_file = workload['instances'][instance]['data_file']
-               threads.append(threading.Thread(target=self.BinaryDataHTTPInstanceGenerator, args=[
+               threads.append(threading.Thread(target=self.binary_data_http_instance_generator, args=[
                               action, instance_times, blocking_cli, data_file]))
            else:
                threads.append(threading.Thread(target=self.http_instance_generator, args=[
@@ -279,7 +283,8 @@ class WorkloadInvoker:
           'test_config': config_json,
           'event_count': event_count,
           'commit_hash': my_commit_hash,
-          'runid': self.runid
+          'runid': self.runid,
+          'runtime_script': False
        }
 
        runtime_script = await self.maybe_start_runtime_script(workload,
@@ -297,6 +302,7 @@ class WorkloadInvoker:
              raise Exception("Runtime script failed")
           else:
              self.logger.info("Runtime script completed successfully")
+             test_metadata['runtime_script'] = True
 
        for thread in threads:
           thread.join()
