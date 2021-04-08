@@ -9,7 +9,7 @@ wsk action create ocr-img handler.js --docker immortalfaas/nodejs-tesseract --we
 To get the URL that we want to curl, you'll want to run:
 
 ```
-wsk action get ocr-img --url -i
+=wsk action get ocr-img --url -i
 ```
 
 Make sure you have some PNG file in your directory. Now you can actually invoke the function! Here we invoke curl with -v for verbose.
