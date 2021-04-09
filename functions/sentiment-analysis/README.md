@@ -17,4 +17,3 @@ Or, with a json parameter file like the one provided:
 ```
 wsk action invoke sentiment -i -P declaration.json -r -v
 ```
-

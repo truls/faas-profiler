@@ -5,13 +5,18 @@
 
 import sys
 import json
+import base64
 from textblob import TextBlob
 
 def main(params):
+
     try:
-        analyse = TextBlob(params['analyse'])
-    except:
+        analyse_input = json.loads(base64.decodebytes(params["__ow_body"].encode("utf-8")))["analyse"]
+        analyse = TextBlob(analyse_input)
+    except KeyError:
         return {'Error' : 'Input parameters should include a string to sentiment analyse.'}
+
+    test_id = params["__ow_query"]
 
     sentences = len(analyse.sentences)
 
@@ -21,4 +26,4 @@ def main(params):
     retVal["polarity"] = sum([sentence.sentiment.polarity for sentence in analyse.sentences]) / sentences
     retVal["sentences"] = sentences
 
-    return retVal
+    return {"result": "ok", "response": retVal, "testid": test_id}
