@@ -16,7 +16,7 @@ def main(params):
     except KeyError:
         return {'Error' : 'Input parameters should include a string to sentiment analyse.'}
 
-    test_id = params["__ow_query"]
+    test_id = params["__ow_query"].split("&")[0]
 
     sentences = len(analyse.sentences)
 

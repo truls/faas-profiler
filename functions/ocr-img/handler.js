@@ -9,7 +9,8 @@ const tesseract = require('tesseractocr');
 
 function main(params) {
   text = new Promise((resolve, reject) => {
-    const testid = params.__ow_query;
+    const qs = params.__ow_query;
+    const testid = qs.split("&")[0];
     tesseract.recognize(Buffer.from(params.__ow_body, "base64"), (err, text) => {
       if (err) {
         var response = {

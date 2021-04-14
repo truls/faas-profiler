@@ -13,6 +13,6 @@ fi
 
 wsk action create "$action" markdown2html.py --docker immortalfaas/markdown-to-html --web raw -i
 
-curl -X POST -H "Content-Type: application/json" --data-binary @./openpiton-readme.json "https://localhost/api/v1/web/guest/default/$action?foo" -k -v
+curl -X POST -H "Content-Type: application/json" --data-binary @./openpiton-readme.json "https://localhost/api/v1/web/guest/default/$action?foo&bar=baz" -k -v
 
 #wsk action invoke "$action" -i -P openpiton-readme.json -r -v

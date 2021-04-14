@@ -15,7 +15,7 @@ def main(params):
     except KeyError:
         return {'Error' : 'Possibly lacking markdown parameter in request.'}
 
-    test_id = params["__ow_query"]
+    test_id = params["__ow_query"].split("&")[0]
 
     html = markdown(md_text)
 

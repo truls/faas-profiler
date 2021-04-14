@@ -11,4 +11,4 @@ fi
 
 zip -r action.zip ./* > /dev/null
 $wsk action create img-resize --kind nodejs:10 action.zip --web raw -i
-curl -X POST -H "Content-Type: image/png" --data-binary @./piton.png https://localhost/api/v1/web/guest/default/img-resize?runid=foobar -k -v
+curl -X POST -H "Content-Type: image/png" --data-binary @./piton.png "https://localhost/api/v1/web/guest/default/img-resize?foobar&foo=bar" -k -v

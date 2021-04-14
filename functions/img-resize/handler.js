@@ -10,7 +10,9 @@ function main(params) {
   const res = i.generate();
   const ret_val = res.then(val => {
     val.result = "ok";
-    val.testid = params.__ow_query;
+    const qs = params.__ow_query;
+    const testid = qs.split("&")[0];
+    val.testid = testid;
     return val;
   }).catch(err => {
     return {

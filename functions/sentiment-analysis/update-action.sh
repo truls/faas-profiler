@@ -13,6 +13,6 @@ fi
 
 wsk action create "$action" sentiment.py --docker immortalfaas/sentiment --web raw -i
 
-curl -X POST -H "Content-Type: application/json" --data-binary @./declaration.json "https://localhost/api/v1/web/guest/default/$action?foo" -k -v
+curl -X POST -H "Content-Type: application/json" --data-binary @./declaration.json "https://localhost/api/v1/web/guest/default/$action?foo&bar=baz" -k -v
 
 #wsk action invoke "$action" -i -P openpiton-readme.json -r -v
