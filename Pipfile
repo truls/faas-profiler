@@ -11,8 +11,9 @@ pandas = "*"
 seaborn = "*"
 data-science-types = "*"
 docker = "*"
+pyaml = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.9"
+python_version = "3.8"
