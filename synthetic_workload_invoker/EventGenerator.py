@@ -3,13 +3,14 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import Any, Dict, List, Optional, Tuple, cast
 import numpy as np
 import random
 
 from commons.Logger import ScriptLogger
 
 
-def CreateEvents(instance, dist, rate, duration, seed=None):
+def create_events(instance, dist: str, rate: int, duration: int, seed: Optional[int] =None) -> List[float]:
     """
     Creates a dictionary of application instances
     """
@@ -24,11 +25,14 @@ def CreateEvents(instance, dist, rate, duration, seed=None):
         inter_arrivals = int(duration*rate)*[1.0/rate]
         inter_arrivals[0] += shift
     elif dist == "Poisson":
-        np.random.seed(seed)
+        raise Exception("Poisson distribution is not supported")
+        if not seed is None:
+            np.random.seed(seed)
         beta = 1.0/rate
         # Creating inter arrival times using an Exponential process
         inter_arrivals = list(np.random.exponential(
-            scale=beta, size=int(1.5*duration*rate)))
+            scale=beta,
+            size=int(1.5*duration*rate)))
 
     return inter_arrivals
 
@@ -49,7 +53,7 @@ def EnforceActivityWindow(start_time, end_time, instance_events):
     return events_iit
 
 
-def GenericEventGenerator(workload):
+def generic_event_generator(workload) -> Tuple[Dict[str, List[float]], int]:
     """
     This function returns a list of times and applications calls given a workload description.
     """
@@ -65,9 +69,11 @@ def GenericEventGenerator(workload):
     random_seed = workload['random_seed']
     logger_eg.info('random_seed: ' + str(random_seed))
 
+    instance: str
+    desc: Dict[str, Any]
     for (instance, desc) in workload['instances'].items():
         if 'interarrivals_list' in desc.keys():
-            instance_events = desc['interarrivals_list']
+            instance_events = cast(List[Any], desc['interarrivals_list'])
             logger_eg.info('Read the invocation time trace for ' + instance)
             # enforcing maximum test duration
             list_len = 0
@@ -80,7 +86,7 @@ def GenericEventGenerator(workload):
             if cutoff_index is not None:
                 instance_events = instance_events[:cutoff_index]
         else:
-            instance_events = CreateEvents(instance=instance,
+            instance_events = create_events(instance=instance,
                                            dist=desc['distribution'],
                                            rate=desc['rate'],
                                            duration=test_duration_in_seconds,
@@ -99,4 +105,4 @@ def GenericEventGenerator(workload):
 
     logger_eg.info("Returning workload event list")
 
-    return [all_events, event_count]
+    return (all_events, event_count)

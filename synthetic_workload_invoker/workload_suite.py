@@ -13,11 +13,12 @@ import json
 import re
 import os
 import subprocess
-from enum import Enum, unique, auto
-from synthetic_workload_invoker.WorkloadInvoker import WorkloadInvoker
+from enum import Enum, unique
+from synthetic_workload_invoker.WorkloadInvoker import InvocationMetadata, WorkloadInvoker
 from time import sleep
 import hashlib
-from typing import Dict, List
+import yaml
+from typing import Any, Dict, List, TypedDict
 
 import docker
 
@@ -27,20 +28,32 @@ from GenConfigs import *
 ENCODING = "utf-8"
 
 @unique
-class InvocationType(Enum):
-    WARM = auto()
-    COLD = auto()
+class InvocationType(str, Enum):
+    WARM = "warm"
+    COLD = "cold"
+    QUICK = "quick"
 
-    @staticmethod
-    def from_string(t: str):
-        try:
-            return {"warm": InvocationType.WARM,
-                    "cold": InvocationType.COLD}[t]
-        except KeyError:
-            raise ValueError("Value must be either cold or warm, was %s" % t)
+class WorkloadGroupSpec(TypedDict):
+    group_name: str
+    invocation_type: InvocationType
+    repeat_times: int
+    benchmarks: List[str]
+
+class WorkloadSuiteMetadata(TypedDict):
+    suiteid: str
+    benchmark_name: str
+    benchmarks: List[InvocationMetadata]
+    mode: InvocationType
+    runids: List[str]
+    repeats: int
+    total_successes: int
+    total_failures: int
+    total_expected: int
+
 
 def _get_docker_container_by_image(image):
     client = docker.from_env()
+    # FIXME: We sometimes get a docker.errors.NotFound error here
     containers = client.containers.list()
     target = list(filter(lambda x: any(map(lambda y: image in y, x.image.tags)), containers))
     if len(target) == 0:
@@ -154,7 +167,8 @@ class WorkloadSuite:
         with open(destfile, 'w') as f:
             f.write(json.dumps(metadata))
 
-    def _run_workload(self, workload):
+
+    def _run_workload(self, workload) -> InvocationMetadata:
         invoker = WorkloadInvoker()
         if self.invocation_type is InvocationType.COLD:
             _reset_openwhisk()
@@ -162,15 +176,18 @@ class WorkloadSuite:
         _wait_for_openwhisk_backlog()
         return run_metadata
 
-    def run_suite(self) -> str:
-        _reset_openwhisk()
+    def run_suite(self) -> WorkloadSuiteMetadata:
+        print(f"Invoking suite ")
+
+        if not self.invocation_type is InvocationType.QUICK:
+            _reset_openwhisk()
 
         # Do warmup run
         if self.invocation_type is InvocationType.WARM:
             self._run_workload(self.workload_config)
 
-        invocations = map(self._run_workload,
-                          [self.workload_config]*self.repeat_times)
+        invocations = list(map(self._run_workload,
+                               [self.workload_config]*self.repeat_times))
         invocation_stats = map(lambda x: (x["runid"], x["successes"], x["failures"],
                                      x["expected"]), invocations)
         runids, successes, failures, expected = map(list, zip(*invocation_stats))
@@ -180,15 +197,70 @@ class WorkloadSuite:
         total_failures = sum(failures)
         total_expected = sum(expected)
 
-        metadata = {'suiteid': suiteid,
-                    'benchmark': self.workload_config,
-                    'total_successes': total_successes,
-                    'total_failures': total_failures,
-                    'total_expected': total_expected}
+        workload_name = invocations[0]["workload_name"]
+
+        metadata: WorkloadSuiteMetadata = {'suiteid': suiteid,
+                                           "benchmark_name": workload_name,
+                                           'benchmarks': invocations,
+                                           'runids': runids,
+                                           'mode': self.invocation_type,
+                                           'repeats': self.repeat_times,
+                                           'total_successes': total_successes,
+                                           'total_failures': total_failures,
+                                           'total_expected': total_expected}
 
         self._write_suite_metadata(metadata)
 
-        print("Finished running suite with runid %s, successes %s, failures %s, expected %s" %
-              (suiteid, total_successes, total_failures, total_expected))
-        print("runids: %s" % str(runids))
-        return suiteid
+        return metadata
+
+
+class WorkloadGroup:
+
+    def __init__(self, workload_group: str):
+        path = os.path.join(FAAS_ROOT, workload_group)
+        if not os.path.exists(path):
+            raise FileNotFoundError(path)
+        self.workload_group = path
+
+    @staticmethod
+    def _write_group_metadata(group: WorkloadGroupSpec,
+                              workloads: List[WorkloadSuiteMetadata]) -> None:
+        data: Dict[str, Any] = {}
+        data["benchmarks"] = list(
+            map(lambda x:
+                {"test_name": x["benchmark_name"],
+                 "suiteid": x["suiteid"]}, workloads)
+        )
+        data["group_name"] = group["group_name"]
+
+        destfile = os.path.join(
+            util.ensure_directory_exists(DATA_DIR),
+            "group_%s.json" % group["group_name"])
+
+        with open(destfile, 'w') as f:
+            f.write(json.dumps(data))
+
+    def run_group(self) -> List[WorkloadSuiteMetadata]:
+        print(f"Opening workload group {self.workload_group}")
+        with open(self.workload_group, "r") as f:
+            group_config: WorkloadGroupSpec = yaml.safe_load(f)
+            group_config["invocation_type"] = InvocationType(group_config["invocation_type"])
+
+        # Ensure that all referenced files exists
+        paths = list(map(lambda x: os.path.join(FAAS_ROOT, f"{x}.json"),
+                         group_config["benchmarks"]))
+
+        for p in paths:
+            if not os.path.exists(p):
+                raise FileNotFoundError(f"No such file {p}")
+
+        print("Running group: ", paths)
+
+        suites = list(
+            map(lambda p: WorkloadSuite(p, group_config["invocation_type"],
+                                   group_config["repeat_times"]).run_suite(),
+                paths))
+
+        self._write_group_metadata(group_config, suites)
+
+        return suites

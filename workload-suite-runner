@@ -1,31 +1,53 @@
 #!/usr/bin/env python3
 
 import sys
-from optparse import OptionParser
+from argparse import ArgumentParser
 
-from synthetic_workload_invoker.workload_suite import WorkloadSuite, InvocationType
+from synthetic_workload_invoker.workload_suite import WorkloadGroup, WorkloadSuite, InvocationType
 
-def main():
-    usage = "usage: %prog [options] arg1 arg2"
-    parser = OptionParser(usage=usage)
-    parser.add_option("-c", "--workload-config", type="string", dest="workload_config",
+def main() -> None:
+    #usage = "usage: %prog [options] arg1 arg2"
+    parser = ArgumentParser(prog="workload-suite-runner")
+    grpup_use = parser.add_mutually_exclusive_group()
+    grpup_use.add_argument("-g", "--workload-group", type=str, dest="workload_group"),
+
+    single_use = parser.add_mutually_exclusive_group()
+    single_use.add_argument("-c", "--workload-config", type=str, dest="workload_config",
                       help="The input yaml config file describing workload suite.", metavar="FILE")
-    parser.add_option("-t", "--type", type="choice",
-                      choices=["warm", "cold"],
-                      dest="invocation_type", help="Do a warm or cold benchmark run")
-    parser.add_option("-r", "--repeat", type="int", dest="repeat_times",
+    single_use.add_argument("-t", "--type",
+                      choices=["warm", "cold", "quick"],
+                      dest="invocation_type", help="Do a warm, cold or quick benchmark run. Quick means to start the benchmark without a reset.")
+    single_use.add_argument("-r", "--repeat", type=int, dest="repeat_times",
                       help="How many times to repeat a benchmark")
-    (options, _) = parser.parse_args()
+    options = parser.parse_args()
 
-    if not (options.workload_config and options.invocation_type and options.repeat_times):
+    if not (options.workload_group or
+            (options.workload_config and options.invocation_type and options.repeat_times)):
         parser.print_help()
         sys.exit(0)
 
-    suite_runner = WorkloadSuite(options.workload_config,
-                                 InvocationType.from_string(options.invocation_type),
-                                 options.repeat_times)
-    suiteid = suite_runner.run_suite()
-    print("Finished benchmark suite with suiteid:", suiteid)
+    if options.workload_group:
+        result = WorkloadGroup(options.workload_group).run_group()
+        print("Ran workload group")
+        max_len = max(map(lambda x: len(x["benchmark_name"]), result)) + 3
+        for r in result:
+            print(f"{r['benchmark_name'].ljust(max_len)}{r['suiteid']}")
+
+    else:
+
+        suite_runner = WorkloadSuite(options.workload_config,
+                                     InvocationType(options.invocation_type),
+                                     options.repeat_times)
+        suite_data = suite_runner.run_suite()
+
+        print("Finished running suite with runid %s, successes %s, failures %s, expected %s" %
+              (suite_data["suiteid"],
+               suite_data["total_successes"],
+               suite_data["total_failures"],
+               suite_data["total_expected"]))
+        print("runids: %s" % str(suite_data["runids"]))
+        print("Finished benchmark suite with suiteid:", suite_data["suiteid"])
+
 
 if __name__ == "__main__":
     main()

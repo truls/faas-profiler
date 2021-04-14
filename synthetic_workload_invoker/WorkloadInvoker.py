@@ -15,12 +15,12 @@ import time
 import threading
 import logging
 import asyncio
-from typing import Any, Tuple, Dict
+from typing import Any, Tuple, Dict, TypedDict
 from mimetypes import MimeTypes
 
 # Local imports
 from GenConfigs import *
-from .EventGenerator import GenericEventGenerator
+from .EventGenerator import generic_event_generator
 from commons.JSONConfigHelper import check_json_config, read_json_config
 from commons.Logger import ScriptLogger
 from commons import util
@@ -29,6 +29,17 @@ from .WorkloadChecker import check_workload_validity
 logging.captureWarnings(True)
 
 
+class InvocationMetadata(TypedDict):
+   start_time: int
+   workload_name: str
+   test_config: Dict[str, Any]
+   event_count: int
+   commit_hash: str
+   runid: str
+   runtime_script: bool
+   failures: int
+   successes: int
+   expected: int
 
 class WorkloadInvoker:
 
@@ -165,46 +176,50 @@ class WorkloadInvoker:
 
 
    def binary_data_http_instance_generator(self, action, instance_times, blocking_cli, data_file):
-       """
-       TODO: Automate content type
-       """
-       url = f"{self.base_gust_url}{action}?{self.runid}"
-       session = FuturesSession(max_workers=100)
-       if len(instance_times) == 0:
-           return False
-       after_time, before_time = 0, 0
+      """
+      TODO: Automate content type
+      """
+      url = f"{self.base_gust_url}{action}?{self.runid}"
+      session = FuturesSession(max_workers=100)
+      if len(instance_times) == 0:
+         return False
+      after_time, before_time = 0, 0
 
-       futures = []
+      futures = []
 
-       try:
-          self.binary_data_cache[data_file]
-       except KeyError:
-          data = open(data_file, 'rb').read()
-          self.binary_data_cache[data_file]["body"] = data
-          self.binary_data_cache[data_file]["mime"] = MimeTypes().guess_type(data_file)
-       finally:
-          file_body = self.binary_data_cache[data_file]["body"]
-          file_mime = self.binary_data_cache[data_file]["mime"]
+      if not data_file in self.binary_data_cache:
+         data = open(data_file, 'rb').read()
+         self.binary_data_cache[data_file] = {}
+         self.binary_data_cache[data_file]["body"] = data
+         self.binary_data_cache[data_file]["mime"] = MimeTypes().guess_type(data_file)[0]
 
-       for t in instance_times:
-           st = t - (after_time - before_time)
-           if st > 0:
-               time.sleep(st)
-           before_time = time.time()
-           self.logger.info("Url " + url)
-           assert(self.runid)
-           future = session.post(url=url, headers={'Content-Type':
-                                                   file_mime},
-                                 params={'blocking': blocking_cli,
-                                         'result': self.RESULT,
-                                         'payload': {'testid': self.runid}},
-                                 data=file_body, auth=(self.user_pass[0],
-                                                  self.user_pass[1]), verify=False)
-           futures.append(future)
-           after_time = time.time()
+      file_body = self.binary_data_cache[data_file]["body"]
+      file_mime = self.binary_data_cache[data_file]["mime"]
 
-       self.handle_futures(futures)
-       return True
+      for t in instance_times:
+         st = t - (after_time - before_time)
+         if st > 0:
+            time.sleep(st)
+         before_time = time.time()
+         self.logger.info("Url " + url)
+         assert(self.runid)
+         future = session.post(url=url, headers={'Content-Type':
+                                                 file_mime},
+                               params={'blocking': blocking_cli,
+                                       'result': self.RESULT,
+                                       'payload': {'testid': self.runid}},
+                               data=file_body, auth=(self.user_pass[0],
+                                                     self.user_pass[1]), verify=False)
+         futures.append(future)
+         after_time = time.time()
+
+      (successes, failures) = self.handle_futures(futures)
+
+      with self.tally_lock:
+         self.invocation_success_tally += successes
+         self.invocation_failure_tally += failures
+         self.invocation_expected_tally += len(instance_times)
+
 
    @staticmethod
    def write_test_metadata(metadata, destdir):
@@ -226,7 +241,7 @@ class WorkloadInvoker:
 
 
 
-   async def invoke_benchmark_async(self, config_json) -> Dict[str, Any]:
+   async def invoke_benchmark_async(self, config_json) -> InvocationMetadata:
        """
        The main function.
        """
@@ -255,7 +270,7 @@ class WorkloadInvoker:
        #                               'SWI.log')
        self.logger = ScriptLogger('workload_invoker', "SWI.log")
 
-       [all_events, event_count] = GenericEventGenerator(workload)
+       (all_events, event_count) = generic_event_generator(workload)
 
        threads = []
 
@@ -277,14 +292,17 @@ class WorkloadInvoker:
                               action, instance_times, blocking_cli, param_file]))
 
        # Dump Test Metadata
-       test_metadata = {
+       test_metadata: InvocationMetadata = {
           'start_time':  math.ceil(time.time() * 1000),
           'workload_name': workload["test_name"],
           'test_config': config_json,
           'event_count': event_count,
           'commit_hash': my_commit_hash,
           'runid': self.runid,
-          'runtime_script': False
+          'runtime_script': False,
+          "failures": 0,
+          "successes": 0,
+          "expected": 0
        }
 
        runtime_script = await self.maybe_start_runtime_script(workload,
@@ -318,8 +336,8 @@ class WorkloadInvoker:
 
        return test_metadata
 
-   def invoke_benchmark(self, config_json):
+   def invoke_benchmark(self, config_json) -> InvocationMetadata:
       return asyncio.run(self.invoke_benchmark_async(config_json))
 
-   def main(self, config_json):
+   def main(self, config_json: str) -> InvocationMetadata:
       return self.invoke_benchmark(config_json)
