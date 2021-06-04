@@ -80,7 +80,7 @@ const main = function(opts) {
   // if we had a match
   if (ind > -1) {
 
-    // iterate through the array pulling out all the matches
+    // iteate through the array pulling out all the matches
     for (var i = ind; i < arr.length; i++) { 
 
       // if we are still finding matching strings
@@ -102,7 +102,9 @@ const main = function(opts) {
   }
 
   // return web-enabled data
-  return response(retval);
+  return {"result": "ok",
+          "testid": opts.runid,
+          "output": response(retval)};
 };
 
 // allow path to be changed for testing
@@ -114,5 +116,3 @@ module.exports = {
   main: main,
   setPath: setPath
 }
-
-
