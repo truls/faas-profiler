@@ -1,0 +1,20 @@
+{
+    "test_name": "under_invoked",
+    "test_duration_in_seconds": 10,
+    "random_seed": 100,
+    "blocking_cli": false,
+    "instances":{
+        "instance1":{
+            "application": "json_dumps",
+            "distribution": "Uniform",
+            "rate": 8,
+            "activity_window": null,
+            "_comment_param_file": "functions/markdown-to-html/openpiton-readme.json"
+        }
+    },
+    "perf_monitoring":{
+        "runtime_script": null,
+        "__comment": "monitoring/RuntimeMonitoring.sh",
+        "post_script": null
+    }
+}

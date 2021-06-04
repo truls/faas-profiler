@@ -1,0 +1,20 @@
+{
+    "test_name": "only_long_run",
+    "test_duration_in_seconds": 20,
+    "random_seed": 100,
+    "blocking_cli": false,
+    "instances": {
+        "instance1": {
+            "application": "long_run",
+            "distribution": "Uniform",
+            "rate": 1,
+            "activity_window":  null,
+            "_comment_param_file": "functions/markdown-to-html/openpiton-readme.json"
+        }
+    },
+    "perf_monitoring":{
+        "runtime_script": null,
+        "__comment": "monitoring/RuntimeMonitoring.sh",
+        "post_script": null
+    }
+}

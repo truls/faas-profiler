@@ -1,0 +1,43 @@
+{
+    "test_name": "under_invoked_two_phase",
+    "test_duration_in_seconds": 1300,
+    "random_seed": 100,
+    "blocking_cli": false,
+    "instances":{
+        "instance1":{
+            "application": "json_dumps",
+            "distribution": "Uniform",
+            "rate": 8,
+            "activity_window":  [0, 9],
+            "_comment_param_file": "functions/markdown-to-html/openpiton-readme.json"
+        },
+        "instance2":{
+            "application": "json_dumps",
+            "distribution": "Uniform",
+            "rate": 8,
+            "activity_window":  [1290, 1299],
+            "_comment_param_file": "functions/markdown-to-html/openpiton-readme.json"
+        },
+        "instance3":{
+            "application": "json_dumps",
+            "distribution": "Uniform",
+            "rate": 100,
+            "activity_window":  null,
+            "_comment_param_file": "functions/markdown-to-html/openpiton-readme.json"
+        },
+        "instance4":{
+            "application": "long_run",
+            "distribution": "Uniform",
+            "rate": 10,
+            "activity_window":  [300, 400],
+            "_comment_param_file": "functions/markdown-to-html/openpiton-readme.json"
+        }
+
+
+    },
+    "perf_monitoring":{
+        "runtime_script": null,
+        "__comment": "monitoring/RuntimeMonitoring.sh",
+        "post_script": null
+    }
+}

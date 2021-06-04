@@ -1,0 +1,18 @@
+{
+    "test_name": "deltablue",
+    "test_duration_in_seconds": 30,
+    "random_seed": 100,
+    "blocking_cli": false,
+    "instances":{
+        "instance1":{
+            "application": "deltablue",
+            "distribution": "Uniform",
+            "rate": 300,
+            "activity_window": null
+        }
+    },
+    "perf_monitoring":{
+        "runtime_script": "monitoring/runtime-monitoring.sh",
+        "post_script": null
+    }
+}

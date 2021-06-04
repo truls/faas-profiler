@@ -1,0 +1,12 @@
+---
+
+group_name: topdown_evaluation_cold_2times
+invocation_type: cold
+repeat_times: 2
+benchmarks:
+  - deltablue
+  - markdown2html
+  - img-resize
+  - json_dumps
+  - ocr-img
+  - sentiment-analysis

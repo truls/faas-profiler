@@ -1,0 +1,12 @@
+---
+
+group_name: topdown_evaluation_quick
+invocation_type: quick
+repeat_times: 1
+benchmarks:
+  - deltablue
+  - markdown2html
+  - img-resize
+  - json_dumps
+  - ocr-img
+  - sentiment-analysis
