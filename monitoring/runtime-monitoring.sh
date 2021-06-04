@@ -13,8 +13,9 @@ TEST_DURATION="$1"
 
 TEST_OUTDIR="$2"
 
-PERF_SAMPLING_INTERVAL=120  # ms (min = 10ms)
-PQOS_SAMPLING_INTERVAL=1    # set sampling interval to Nx100ms
+# PERF_SAMPLING_INTERVAL=120  # ms (min = 10ms)
+PERF_SAMPLING_INTERVAL=1000  # ms (min = 10ms)
+#PQOS_SAMPLING_INTERVAL=1    # set sampling interval to Nx100ms
 
 # Clear existing output files
 # sudo rm -rf *.out

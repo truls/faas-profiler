@@ -128,19 +128,22 @@ class WorkloadInvoker:
    #class InstanceGenerator(
 
    def http_instance_generator(self, action, instance_times,
-                               blocking_cli, param_file=None) -> None:
+                               blocking_cli, query_file=None, param_file=None) -> None:
        if len(instance_times) == 0:
           raise Exception("http_instance_generator called without instance times")
        session = FuturesSession(max_workers=100)
-       url = self.base_url + action
+       url = f"{self.base_url}{action}?{self.runid}"
        assert(self.runid)
        parameters = {'blocking': blocking_cli, 'result': self.RESULT}
        args = { 'testid': self.runid,
                 'body': None }
-       print("Setting params", parameters)
        authentication = (self.user_pass[0], self.user_pass[1])
 
        futures = []
+
+       if (not param_file is None) and (not query_file is None):
+          raise Exception("Only one of param_file and query_stirng can be set")
+
 
        if param_file:
           try:
@@ -152,6 +155,19 @@ class WorkloadInvoker:
                 param_file_body = args
                 self.param_file_cache[param_file] = param_file_body
 
+       if query_file:
+          try:
+             query_file_body = self.param_file_cache[query_file]
+          except:
+             with open(query_file, 'r') as f:
+                query_file_body = json.load(f)
+                self.param_file_cache[query_file] = query_file_body
+
+          print("Updating paramters", str(parameters), str(query_file_body))
+          parameters.update(query_file_body)
+
+
+       print("Final parameters", str(parameters))
        st = 0
        after_time, before_time = 0, 0
        for t in instance_times:
@@ -160,7 +176,8 @@ class WorkloadInvoker:
           if st > 0:
              time.sleep(st)
 
-          #logger.info("Url " + url)
+          # self.logger.info("Url " + url)
+          # self.logger.info("Setting params" + str(parameters))
           future = session.post(url, params=parameters, auth=authentication,
                                 json=args, verify=False)
           futures.append(future)
@@ -201,7 +218,7 @@ class WorkloadInvoker:
          if st > 0:
             time.sleep(st)
          before_time = time.time()
-         self.logger.info("Url " + url)
+         #self.logger.info("Url " + url)
          assert(self.runid)
          future = session.post(url=url, headers={'Content-Type':
                                                  file_mime},
@@ -282,6 +299,12 @@ class WorkloadInvoker:
                param_file = os.path.join(FAAS_ROOT,  workload['instances'][instance]['param_file'])
            except:
                param_file = None
+
+           try:
+               query_file = os.path.join(FAAS_ROOT,  workload['instances'][instance]['query_string'])
+           except:
+               query_file = None
+
            blocking_cli = workload['blocking_cli']
            if 'data_file' in workload['instances'][instance].keys():
                data_file = workload['instances'][instance]['data_file']
@@ -289,7 +312,7 @@ class WorkloadInvoker:
                               action, instance_times, blocking_cli, data_file]))
            else:
                threads.append(threading.Thread(target=self.http_instance_generator, args=[
-                              action, instance_times, blocking_cli, param_file]))
+                              action, instance_times, blocking_cli, query_file, param_file]))
 
        # Dump Test Metadata
        test_metadata: InvocationMetadata = {

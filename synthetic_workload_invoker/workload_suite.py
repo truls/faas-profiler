@@ -50,11 +50,20 @@ class WorkloadSuiteMetadata(TypedDict):
     total_failures: int
     total_expected: int
 
-
 def _get_docker_container_by_image(image):
-    client = docker.from_env()
-    # FIXME: We sometimes get a docker.errors.NotFound error here
-    containers = client.containers.list()
+
+    containers: List[Any]
+    # There is probably a race condition within the docker API. Retry
+    # until we succeed
+    while True:
+        try:
+            client = docker.from_env()
+            containers = client.containers.list()
+        except docker.errors.NotFound:
+            pass
+        else:
+            break;
+
     target = list(filter(lambda x: any(map(lambda y: image in y, x.image.tags)), containers))
     if len(target) == 0:
         raise Exception("No docker containers with image matching %s" % image)
@@ -67,6 +76,10 @@ def _parse_kafka_output(kafka_output: str) -> List[Dict[str, str]]:
     data_lines = filter(lambda x: not (x.startswith("GROUP") or (x.strip() == "")) ,
                         kafka_output.splitlines())
 
+    data_lines_split = filter(lambda x: len(x) >= 9,
+                             map(lambda l: re.split(" +", l.strip()),
+                                 data_lines))
+
     return list(map(lambda x: {'group': x[0],
                           'topic': x[1],
                           'partition': x[2],
@@ -76,8 +89,7 @@ def _parse_kafka_output(kafka_output: str) -> List[Dict[str, str]]:
                           'consumer-id': x[6],
                           'host': x[7],
                           'client-id': x[8]},
-                    map(lambda l: re.split(" +", l.strip()),
-                        data_lines)))
+                    data_lines_split))
 
 
 def _get_kafka_queue_stats(kafka_container) -> Dict[str, int]:
@@ -103,7 +115,7 @@ def _get_kafka_queue_stats(kafka_container) -> Dict[str, int]:
 
     output_parsed = list(filter(lambda x: x["group"] == "completed0" or
                                 x["group"] == "invoker0",
-                           _parse_kafka_output(output_str)))
+                                _parse_kafka_output(output_str)))
 
     if len(output_parsed) != 2:
         raise Exception("Kafka stats didn't contain data for both invoker0 and completed0 groups")
@@ -232,6 +244,7 @@ class WorkloadGroup:
                  "suiteid": x["suiteid"]}, workloads)
         )
         data["group_name"] = group["group_name"]
+        data["invocation_type"] = group["invocation_type"]
 
         destfile = os.path.join(
             util.ensure_directory_exists(DATA_DIR),
@@ -247,7 +260,7 @@ class WorkloadGroup:
             group_config["invocation_type"] = InvocationType(group_config["invocation_type"])
 
         # Ensure that all referenced files exists
-        paths = list(map(lambda x: os.path.join(FAAS_ROOT, f"{x}.json"),
+        paths = list(map(lambda x: os.path.join(WORKLOAD_SPECS, f"{x}.json"),
                          group_config["benchmarks"]))
 
         for p in paths:

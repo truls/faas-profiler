@@ -73,7 +73,7 @@ class Image {
                             "Content-Type": "application/zip",
                             "Content-Disposition": "attachment; filename=android.zip"
                         },
-                        body: d
+                      body: d
                     };
                     resolve(response);
                 });

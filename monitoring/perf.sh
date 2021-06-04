@@ -14,4 +14,11 @@ test_outdir="$3"
 
 echo "Running perf for $test_duration seconds"
 
-sudo perf stat -a -e cpu-cycles,L1-dcache-loads,L1-dcache-load-misses,L1-icache-load-misses,LLC-load-misses,dTLB-load-misses,dTLB-loads,iTLB-load-misses,iTLB-loads,branch-misses,context-switches,cpu-migrations,page-faults,instructions -I "$perf_sampling_interval" -o "$test_outdir/perf-mon.out" -x ',' sleep "$test_duration"
+cpus="1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31"
+#cpus="0-31"
+
+# sudo perf stat -a --cpu="$cpus" -e cpu-cycles,L1-dcache-loads,L1-dcache-load-misses,L1-icache-load-misses,LLC-load-misses,dTLB-load-misses,dTLB-loads,iTLB-load-misses,iTLB-loads,branch-misses,context-switches,cpu-migrations,page-faults,instructions -I "$perf_sampling_interval" -o "$test_outdir/perf-mon.out" -x ',' sleep "$test_duration"
+
+sudo perf stat --cpu="$cpus" --topdown -I "$perf_sampling_interval" -o "$test_outdir/perf-mon.out" -x ',' sleep "$test_duration"
+
+#sudo perf record --cpu="$cpus" -e cpu-cycles -F 99 -o "$test_outdir/perf-record.out"  sleep "$test_duration"

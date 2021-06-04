@@ -8,10 +8,10 @@ from synthetic_workload_invoker.workload_suite import WorkloadGroup, WorkloadSui
 def main() -> None:
     #usage = "usage: %prog [options] arg1 arg2"
     parser = ArgumentParser(prog="workload-suite-runner")
-    grpup_use = parser.add_mutually_exclusive_group()
-    grpup_use.add_argument("-g", "--workload-group", type=str, dest="workload_group"),
+    group_use = parser.add_argument_group()
+    group_use.add_argument("-g", "--workload-group", type=str, dest="workload_group"),
 
-    single_use = parser.add_mutually_exclusive_group()
+    single_use = parser.add_argument_group()
     single_use.add_argument("-c", "--workload-config", type=str, dest="workload_config",
                       help="The input yaml config file describing workload suite.", metavar="FILE")
     single_use.add_argument("-t", "--type",
