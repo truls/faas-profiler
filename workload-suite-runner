@@ -3,9 +3,14 @@
 import sys
 from argparse import ArgumentParser
 
+
+from commons import util
+from GenConfigs import *
+
 from synthetic_workload_invoker.workload_suite import WorkloadGroup, WorkloadSuite, InvocationType
 
 def main() -> None:
+    util.set_cpu_affinity(SYSTEM_CPU_SET)
     #usage = "usage: %prog [options] arg1 arg2"
     parser = ArgumentParser(prog="workload-suite-runner")
     group_use = parser.add_argument_group()

@@ -1,6 +1,7 @@
 import os
 import random
 import time
+import subprocess
 
 from GenConfigs import *
 
@@ -23,3 +24,7 @@ def get_suite_metadata_file(suiteid: str) -> str:
         ensure_directory_exists(
             os.path.join(DATA_DIR, "suite_%s" % suiteid)),
         "metadata.json")
+
+def set_cpu_affinity(cpuset: str) -> None:
+    subprocess.check_output(["taskset", "-p", "-c", cpuset, f"{os.getpid()}"])
+    print(f"Set CPU affinity to {cpuset}")
