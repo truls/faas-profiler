@@ -31,10 +31,18 @@ logging.captureWarnings(True)
 
 
 class WorkloadInvoker:
+   supported_distributions = {'Poisson', 'Uniform'}
 
-   def __init__(self):
+   @staticmethod
+   def gen_invocation_id(test_name, runid):
+      out = subprocess.check_output(["git", "rev-parse", "HEAD"],
+                                            cwd=FAAS_ROOT)
+      commit_hash = out.decode('utf-8').strip()
+      test_dir_name = "{}_{}_{}".format(commit_hash[0:10], test_name, runid)
+      return (commit_hash, test_dir_name)
+
+   def __init__(self, config_json):
       # Global variables
-      self.supported_distributions = {'Poisson', 'Uniform'}
 
       self.logger = None
 
@@ -62,13 +70,30 @@ class WorkloadInvoker:
       self.invocation_expected_tally = 0
       self.tally_lock = threading.Lock()
 
+      self.config_json = config_json
+      self.workload = WorkloadInvoker.read_json_config(config_json)
+      # Set name and commit hash and create destination dir if
+      # missing
+      self.my_commit_hash, test_result_dir_name =\
+         WorkloadInvoker.gen_invocation_id(self.workload["test_name"], self.runid)
+      self.test_result_dir_path = util.ensure_directory_exists(
+         os.path.join(DATA_DIR, test_result_dir_name))
+
+
    @staticmethod
-   def gen_invocation_id(test_name, runid):
-      out = subprocess.check_output(["git", "rev-parse", "HEAD"],
-                                            cwd=FAAS_ROOT)
-      commit_hash = out.decode('utf-8').strip()
-      test_dir_name = "{}_{}_{}".format(commit_hash[0:10], test_name, runid)
-      return (commit_hash, test_dir_name)
+   def read_json_config(config_json: str) -> Dict[Any, Any]:
+      if not check_json_config(config_json):
+         raise Exception("Invalid or no JSON config file!")
+
+      workload = read_json_config(config_json)
+      if not check_workload_validity(workload=workload,
+                                     supported_distributions=WorkloadInvoker.supported_distributions):
+          # Abort the function if json file not valid
+          raise Exception("Workload JSON is invalid")
+
+      return workload
+
+
 
    def handle_futures(self, futures) -> Tuple[int, int]:
        """
@@ -247,28 +272,15 @@ class WorkloadInvoker:
 
 
 
-   async def invoke_benchmark_async(self, config_json) -> InvocationMetadata:
+   async def invoke_benchmark_async(self) -> InvocationMetadata:
        """
        The main function.
        """
+
+       workload = self.workload
        #self.logger.info("Workload Invoker started")
        #print("Log file -> ../profiler_results/logs/SWI.log")
 
-       if not check_json_config(config_json):
-           raise Exception("Invalid or no JSON config file!")
-
-       workload = read_json_config(config_json)
-       if not check_workload_validity(workload=workload,
-                                     supported_distributions=self.supported_distributions):
-          # Abort the function if json file not valid
-          raise Exception("Workload JSON is invalid")
-
-       # Set name and commit hash and create destination dir if
-       # missing
-       my_commit_hash, test_result_dir_name =\
-          WorkloadInvoker.gen_invocation_id(workload["test_name"], self.runid)
-       test_result_dir_path = util.ensure_directory_exists(
-          os.path.join(DATA_DIR, test_result_dir_name))
 
        # log_path = os.path.join(
        #                               util.ensure_directory_exists(
@@ -306,10 +318,10 @@ class WorkloadInvoker:
        # Dump Test Metadata
        test_metadata: InvocationMetadata = {
           'start_time':  math.ceil(time.time() * 1000),
-          'workload_name': workload["test_name"],
-          'test_config': config_json,
+          'workload_name': self.workload["test_name"],
+          'test_config': self.config_json,
           'event_count': event_count,
-          'commit_hash': my_commit_hash,
+          'commit_hash': self.my_commit_hash,
           'runid': self.runid,
           'runtime_script': False,
           "failures": 0,
@@ -318,7 +330,7 @@ class WorkloadInvoker:
        }
 
        runtime_script = await self.maybe_start_runtime_script(workload,
-                                                              test_result_dir_path)
+                                                              self.test_result_dir_path)
 
 
        self.logger.info("Test started")
@@ -342,14 +354,11 @@ class WorkloadInvoker:
        test_metadata["successes"] = self.invocation_success_tally
        test_metadata["expected"] = self.invocation_expected_tally
 
-       self.write_test_metadata(test_metadata, test_result_dir_path)
+       self.write_test_metadata(test_metadata, self.test_result_dir_path)
 
        self.logger.info("Test ended")
 
        return test_metadata
 
-   def invoke_benchmark(self, config_json) -> InvocationMetadata:
-      return asyncio.run(self.invoke_benchmark_async(config_json))
-
-   def main(self, config_json: str) -> InvocationMetadata:
-      return self.invoke_benchmark(config_json)
+   def invoke_benchmark(self) -> InvocationMetadata:
+      return asyncio.run(self.invoke_benchmark_async())

@@ -156,10 +156,10 @@ class WorkloadSuite:
 
 
     def _run_workload(self, workload) -> InvocationMetadata:
-        invoker = WorkloadInvoker()
+        invoker = WorkloadInvoker(workload)
         if self.invocation_type is InvocationType.COLD:
             _reset_openwhisk()
-        run_metadata = invoker.invoke_benchmark(workload)
+        run_metadata = invoker.invoke_benchmark()
         _wait_for_openwhisk_backlog()
         return run_metadata
 
