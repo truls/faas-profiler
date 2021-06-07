@@ -13,13 +13,12 @@ import json
 import re
 import os
 import subprocess
-from enum import Enum, unique
 from synthetic_workload_invoker.datatypes import InvocationType, WorkloadGroupSpec, WorkloadSuiteMetadata
 from synthetic_workload_invoker.WorkloadInvoker import InvocationMetadata, WorkloadInvoker
 from time import sleep
 import hashlib
 import yaml
-from typing import Any, Dict, List, TypedDict
+from typing import Any, Dict, List
 
 import docker
 
