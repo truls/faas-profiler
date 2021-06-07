@@ -14,6 +14,7 @@ import re
 import os
 import subprocess
 from enum import Enum, unique
+from synthetic_workload_invoker.datatypes import InvocationType, WorkloadGroupSpec, WorkloadSuiteMetadata
 from synthetic_workload_invoker.WorkloadInvoker import InvocationMetadata, WorkloadInvoker
 from time import sleep
 import hashlib
@@ -26,29 +27,6 @@ from commons import util
 from GenConfigs import *
 
 ENCODING = "utf-8"
-
-@unique
-class InvocationType(str, Enum):
-    WARM = "warm"
-    COLD = "cold"
-    QUICK = "quick"
-
-class WorkloadGroupSpec(TypedDict):
-    group_name: str
-    invocation_type: InvocationType
-    repeat_times: int
-    benchmarks: List[str]
-
-class WorkloadSuiteMetadata(TypedDict):
-    suiteid: str
-    benchmark_name: str
-    benchmarks: List[InvocationMetadata]
-    mode: InvocationType
-    runids: List[str]
-    repeats: int
-    total_successes: int
-    total_failures: int
-    total_expected: int
 
 def _get_docker_container_by_image(image):
 
@@ -172,10 +150,7 @@ class WorkloadSuite:
 
     @staticmethod
     def _write_suite_metadata(metadata):
-        destfile = os.path.join(
-            util.ensure_directory_exists(
-                os.path.join(DATA_DIR, "suite_%s" % metadata["suiteid"])),
-            "metadata.json")
+        destfile = util.get_suite_metadata_file(metadata["suiteid"])
         with open(destfile, 'w') as f:
             f.write(json.dumps(metadata))
 

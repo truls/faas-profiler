@@ -7,6 +7,7 @@
 import json
 
 import os
+from synthetic_workload_invoker.datatypes import InvocationMetadata
 from requests_futures.sessions import FuturesSession
 import concurrent.futures
 import subprocess
@@ -28,18 +29,6 @@ from .WorkloadChecker import check_workload_validity
 
 logging.captureWarnings(True)
 
-
-class InvocationMetadata(TypedDict):
-   start_time: int
-   workload_name: str
-   test_config: Dict[str, Any]
-   event_count: int
-   commit_hash: str
-   runid: str
-   runtime_script: bool
-   failures: int
-   successes: int
-   expected: int
 
 class WorkloadInvoker:
 

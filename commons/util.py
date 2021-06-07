@@ -2,6 +2,8 @@ import os
 import random
 import time
 
+from GenConfigs import *
+
 def ensure_directory_exists(d: str) -> str:
     if not os.path.isdir(d):
         if os.path.exists(d):
@@ -15,3 +17,9 @@ def gen_random_hex_string(l: int) -> str:
     val = "%10x" % random.getrandbits(l * 8)
     random.setstate(st)
     return val
+
+def get_suite_metadata_file(suiteid: str) -> str:
+    return os.path.join(
+        ensure_directory_exists(
+            os.path.join(DATA_DIR, "suite_%s" % suiteid)),
+        "metadata.json")
